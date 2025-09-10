@@ -64,6 +64,12 @@ type ContItem = {
   familiaNeg?: number;
 };
 
+// Claves numéricas de ContItem (excluye los campos de valencia de texto)
+type NumericContKey = Exclude<
+  keyof ContItem,
+  "califAltaValencia" | "califBajaValencia"
+>;
+
 type SurveyState = {
   step: number; // 0=Intro, 1=Sección A, ...
   consent?: boolean;
@@ -125,7 +131,7 @@ export default function Home() {
         const parsed = JSON.parse(raw) as SurveyState;
         setState((prev) => ({
           step: parsed.step ?? 0,
-      consent: !!(parsed as any).consent,
+          consent: Boolean(parsed.consent),
           sectionA: { ...emptyA, ...(parsed.sectionA || {}) },
           teoricos: {
             enfoques: [
@@ -175,16 +181,6 @@ export default function Home() {
   };
 
   // Actualizadores Sección Teóricos
-  const updateEnfoqueNombre = (index: number, nombre: string) => {
-    setState((s) => {
-      const enfoques = s.teoricos.enfoques.map((e, i) => (i === index ? { ...e, nombre } : e));
-      // Si el nombre queda vacío, opcionalmente podemos limpiar valoraciones
-      if (!nombre.trim()) {
-        enfoques[index] = { nombre: "" };
-      }
-      return { ...s, teoricos: { enfoques } };
-    });
-  };
 
   const updatePreferencia = (index: number, preferencia: number) => {
     setState((s) => {
@@ -329,14 +325,13 @@ export default function Home() {
             <Card>
               {state.step === 4 ? (
                 <SectionActividades
-                  enfoques={state.teoricos.enfoques}
                   data={state.actividades}
                   onChange={(cat: keyof SurveyState["actividades"], idx: 0 | 1, value: number) =>
                     setState((s) => {
                       const next = { ...s.actividades } as SurveyState["actividades"];
                       const pair = [...(next[cat] as [number, number])] as [number, number];
                       pair[idx] = clampPercent(value);
-                      next[cat] = pair as any;
+                      next[cat] = pair;
                       return { ...s, actividades: next };
                     })
                   }
@@ -1041,11 +1036,11 @@ function SectionContingencias({
       ) : (
         <div className="space-y-8">
           {(() => {
-            const contexts: {
-              id: string;
-              title: string;
-              items: { key: keyof ContItem; label: string; needsValence?: boolean }[];
-            }[] = [
+              const contexts: {
+                id: string;
+                title: string;
+                items: { key: NumericContKey; label: string; needsValence?: boolean }[];
+              }[] = [
               {
                 id: "docentes",
                 title: "Contexto Académico - Docentes",
@@ -1103,7 +1098,7 @@ function SectionContingencias({
               const entries = includeIdx.flatMap((idx) => {
                 return ctx.items.map((it) => ({
                   enfoqueIdx: idx,
-                  key: it.key as keyof ContItem,
+                  key: it.key,
                   label: it.label, // mantener [X] y reemplazar en render con PSA/TCC en negrita
                   needsValence: it.needsValence,
                 }));
@@ -1117,7 +1112,7 @@ function SectionContingencias({
                   <h3 className="font-medium">{ctx.title}</h3>
                   <div className="grid gap-3">
                     {mixed.map((it) => {
-                      const c = data[it.enfoqueIdx] || {};
+                      const c: Partial<ContItem> = data[it.enfoqueIdx] ?? ({} as Partial<ContItem>);
                       const short = it.enfoqueIdx === 0 ? "PSA" : "TCC";
                       const parts = (it.label || "").split("[X]");
                       return (
@@ -1132,7 +1127,7 @@ function SectionContingencias({
                           </div>
                           <div className="flex flex-col gap-2">
                             <FrequencySelect
-                              value={(c as any)[it.key] as number | undefined}
+                              value={c[it.key] as number | undefined}
                               onChange={(v) => onChange(it.enfoqueIdx, { [it.key]: v } as Partial<ContItem>)}
                               label="Seleccione"
                             />
@@ -1190,13 +1185,11 @@ function SectionContingencias({
 }
 
 function SectionActividades({
-  enfoques,
   data,
   onChange,
   onBack,
   onSubmit,
 }: {
-  enfoques: { nombre: string }[];
   data: { teorico: [number, number]; formacion: [number, number]; redes: [number, number] };
   onChange: (cat: "teorico" | "formacion" | "redes", idx: 0 | 1, value: number) => void;
   onBack: () => void;
