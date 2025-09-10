@@ -123,6 +123,27 @@ export default function Home() {
   actividades: { teorico: [0, 0], formacion: [0, 0], redes: [0, 0] },
   });
 
+  // Envío al backend
+  const submitSurvey = async () => {
+    try {
+      const res = await fetch('/api/survey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sectionA: state.sectionA,
+          teoricos: state.teoricos,
+          contingencias: state.contingencias,
+          actividades: state.actividades,
+        }),
+      });
+      if (!res.ok) throw new Error('Error al guardar');
+      const json = await res.json();
+      if (json?.ok) setState((s) => ({ ...s, step: 5 }));
+    } catch (e) {
+      alert('Hubo un problema al enviar la encuesta. Intente nuevamente.');
+    }
+  };
+
   // Persistencia local (no sensible, anónimo)
   useEffect(() => {
     try {
@@ -336,7 +357,7 @@ export default function Home() {
                     })
                   }
                   onBack={back}
-                  onSubmit={() => setState((s) => ({ ...s, step: 5 }))}
+                  onSubmit={submitSurvey}
                 />
               ) : (
                 <ThankYou />

@@ -1,0 +1,147 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Use pooled connection at runtime and direct (non-pooled) for migrations/introspection
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+/// Main table storing one row per usuario/cuestionario enviado
+model SurveyResponse {
+  /// Identificador único aleatorio (UUID v4) generado por la BD/ORM
+  id        String   @id @default(uuid()) @db.Uuid
+
+  /// Timestamps de auditoría
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ------------------ Sección A (Sociodemográfico y Académico) ------------------
+  edad                      Int?
+  genero                    String?
+  genero_otro               String?
+  anio_inicio               Int?
+  situacion_academica       String?
+  promedio                  Float?
+  participacion_docencia_occurrence Boolean?
+  participacion_docencia_detalle    String?
+  influencia_docente_occurrence     Boolean?
+  influencia_docente_materia        String?
+  influencia_docente_enfoque        String?
+  contacto_pares_text               String?
+  contacto_previo_occurrence        Boolean?
+  contacto_previo_enfoque           String?
+  materias_electivas_occurrence     Boolean?
+  materias_electivas_detalle        String?
+  enfoques_conocidos_list           String?
+  adscripcion_teorica_occurrence    Boolean?
+  adscripcion_teorica_cual          String?
+
+  // ------------------ Sección Teóricos (PSA/TCC) ------------------
+  psa_preferencia           Int?
+  psa_conocimiento          Int?
+  tcc_preferencia           Int?
+  tcc_conocimiento          Int?
+
+  // ------------------ Sección Contingencias (frecuencias 0..6) ------------------
+  // Docentes
+  psa_docentePos_frequency  Int?
+  psa_docenteNeg_frequency  Int?
+  psa_califAlta_frequency   Int?
+  psa_califAlta_valence     Valencia?
+  psa_califBaja_frequency   Int?
+  psa_califBaja_valence     Valencia?
+  psa_obsDocentePos_frequency Int?
+  psa_obsDocenteNeg_frequency Int?
+
+  tcc_docentePos_frequency  Int?
+  tcc_docenteNeg_frequency  Int?
+  tcc_califAlta_frequency   Int?
+  tcc_califAlta_valence     Valencia?
+  tcc_califBaja_frequency   Int?
+  tcc_califBaja_valence     Valencia?
+  tcc_obsDocentePos_frequency Int?
+  tcc_obsDocenteNeg_frequency Int?
+
+  // Pares
+  psa_paresPos_frequency    Int?
+  psa_paresNeg_frequency    Int?
+  psa_obsParesPos_frequency Int?
+  psa_obsParesNeg_frequency Int?
+
+  tcc_paresPos_frequency    Int?
+  tcc_paresNeg_frequency    Int?
+  tcc_obsParesPos_frequency Int?
+  tcc_obsParesNeg_frequency Int?
+
+  // Contenido teórico
+  psa_teoriaPos_frequency   Int?
+  psa_teoriaNeg_frequency   Int?
+  psa_teoricoClaro_frequency Int?
+  psa_teoricoConfuso_frequency Int?
+
+  tcc_teoriaPos_frequency   Int?
+  tcc_teoriaNeg_frequency   Int?
+  tcc_teoricoClaro_frequency Int?
+  tcc_teoricoConfuso_frequency Int?
+
+  // Clínico / Relatos
+  psa_clinicoPos_frequency  Int?
+  psa_clinicoNeg_frequency  Int?
+  psa_relatosPos_frequency  Int?
+  psa_relatosNeg_frequency  Int?
+
+  tcc_clinicoPos_frequency  Int?
+  tcc_clinicoNeg_frequency  Int?
+  tcc_relatosPos_frequency  Int?
+  tcc_relatosNeg_frequency  Int?
+
+  // Familiar
+  psa_familiaPos_frequency  Int?
+  psa_familiaNeg_frequency  Int?
+  tcc_familiaPos_frequency  Int?
+  tcc_familiaNeg_frequency  Int?
+
+  // ------------------ Sección Actividades (porcentajes 0..100) ------------------
+  psa_teorico_percent       Int?
+  tcc_teorico_percent       Int?
+  psa_formacion_percent     Int?
+  tcc_formacion_percent     Int?
+  psa_redes_percent         Int?
+  tcc_redes_percent         Int?
+
+}
+
+enum Valencia {
+  positivos
+  negativos
+  neutros
+}
+  // ------------------ Cómo nombrar columnas del cuestionario ------------------
+  // 1) Variables con múltiples dimensiones de la misma pregunta
+  //    Usar sufijos claros para vincularlas por nombre:
+  //    - <base>_occurrence (boolean/int: 0/1)
+  //    - <base>_valence   (int: escala de valencia)
+  //    Ejemplo: estres_laboral_occurrence, estres_laboral_valence
+  //
+  // 2) Porcentajes por área para TCC y PSA
+  //    Usar prefijos del enfoque y sufijos _percent, manteniendo el área:
+  //    - tcc_<area>_percent (0-100)
+  //    - psa_<area>_percent (0-100)
+  //    Ejemplo: tcc_emocional_percent, psa_cognitiva_percent
+  //
+  // 3) Otras variantes multi-respuesta
+  //    - <base>_frequency, <base>_severity, <base>_duration_minutes, etc.
+  //
+  // Nota: agrega aquí las columnas específicas del cuestionario siguiendo
+  // estas reglas. Luego ejecuta `npm run prisma:migrate`.
+// end of guidance
