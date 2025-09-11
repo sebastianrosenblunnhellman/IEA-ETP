@@ -1,7 +1,70 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-type Payload = any;
+type SectionA = {
+  edad?: number | string;
+  genero?: string;
+  generoOtro?: string;
+  anioInicio?: number | string;
+  situacion?: string;
+  promedio?: number | string;
+  participacionDocencia?: boolean | string | number;
+  participacionDetalle?: string;
+  influenciaDocente?: boolean | string | number;
+  influenciaMateria?: string;
+  influenciaEnfoque?: string;
+  contactoPares?: string;
+  contactoPrevio?: boolean | string | number;
+  contactoPrevioEnfoque?: string;
+  materiasElectivas?: boolean | string | number;
+  materiasElectivasDetalle?: string;
+  enfoquesConocidos?: string;
+  adscripcionTeorica?: boolean | string | number;
+  adscripcionCual?: string;
+};
+
+type Enfoque = {
+  preferencia?: number | null;
+  conocimiento?: number | null;
+};
+
+type ContItem = {
+  docentePos?: number | null;
+  docenteNeg?: number | null;
+  califAlta?: number | null;
+  califAltaValencia?: 'positivos' | 'negativos' | 'neutros' | null;
+  califBaja?: number | null;
+  califBajaValencia?: 'positivos' | 'negativos' | 'neutros' | null;
+  obsDocentePos?: number | null;
+  obsDocenteNeg?: number | null;
+  paresPos?: number | null;
+  paresNeg?: number | null;
+  obsParesPos?: number | null;
+  obsParesNeg?: number | null;
+  teoriaPos?: number | null;
+  teoriaNeg?: number | null;
+  teoricoClaro?: number | null;
+  teoricoConfuso?: number | null;
+  clinicoPos?: number | null;
+  clinicoNeg?: number | null;
+  relatosPos?: number | null;
+  relatosNeg?: number | null;
+  familiaPos?: number | null;
+  familiaNeg?: number | null;
+};
+
+type Actividades = {
+  teorico?: [number | null, number | null];
+  formacion?: [number | null, number | null];
+  redes?: [number | null, number | null];
+};
+
+type Payload = {
+  sectionA?: SectionA;
+  teoricos?: { enfoques?: Enfoque[] };
+  contingencias?: { porEnfoque?: ContItem[] };
+  actividades?: Actividades;
+};
 
 function toBool(v: unknown): boolean | null {
   if (typeof v === 'boolean') return v;
@@ -16,14 +79,14 @@ function toBool(v: unknown): boolean | null {
 
 export async function POST(req: Request) {
   try {
-    const body: Payload = await req.json();
+  const body: Payload = await req.json();
 
     const a = body.sectionA ?? {};
     const enfoques = body.teoricos?.enfoques ?? [];
     const cont = body.contingencias?.porEnfoque ?? [];
     const act = body.actividades ?? {};
 
-    const data: any = {
+  const data: Record<string, unknown> = {
       // A
       edad: a.edad ? Number(a.edad) : null,
       genero: a.genero || null,
@@ -47,8 +110,8 @@ export async function POST(req: Request) {
     };
 
     // Teóricos: asumimos index 0=PSA, 1=TCC
-    const psa = enfoques[0] || {};
-    const tcc = enfoques[1] || {};
+  const psa: Enfoque = enfoques[0] || {};
+  const tcc: Enfoque = enfoques[1] || {};
     Object.assign(data, {
       psa_preferencia: psa.preferencia ?? null,
       psa_conocimiento: psa.conocimiento ?? null,
@@ -57,7 +120,7 @@ export async function POST(req: Request) {
     });
 
     // Contingencias helper para copiar campos
-    const copyCont = (prefix: 'psa' | 'tcc', c: any) => {
+  const copyCont = (prefix: 'psa' | 'tcc', c?: ContItem) => {
       if (!c) return;
       data[`${prefix}_docentePos_frequency`] = c.docentePos ?? null;
       data[`${prefix}_docenteNeg_frequency`] = c.docenteNeg ?? null;
@@ -91,8 +154,8 @@ export async function POST(req: Request) {
     copyCont('tcc', cont[1]);
 
     // Actividades (pares [psa, tcc])
-    const clamp = (n: any) => {
-      const v = Number(n);
+    const clamp = (n: unknown) => {
+      const v = Number(n as number);
       if (!Number.isFinite(v)) return null;
       return Math.max(0, Math.min(100, Math.round(v)));
     };
@@ -109,10 +172,13 @@ export async function POST(req: Request) {
       data.tcc_redes_percent = clamp(act.redes[1]);
     }
 
-    const created = await prisma.surveyResponse.create({ data });
+  // Narrowly cast just this property access to bypass missing type in build without using `any` directly
+  const p = prisma as unknown as { surveyResponse: { create: (args: { data: Record<string, unknown> }) => Promise<{ id: string }> } };
+  const created = await p.surveyResponse.create({ data });
     return NextResponse.json({ ok: true, id: created.id });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('survey POST error', e);
-    return NextResponse.json({ ok: false, error: e?.message || 'unknown' }, { status: 500 });
+    const message = (e as Error)?.message ?? 'unknown';
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
