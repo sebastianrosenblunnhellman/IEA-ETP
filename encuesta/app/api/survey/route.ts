@@ -54,9 +54,10 @@ type ContItem = {
 };
 
 type Actividades = {
-  teorico?: [number | null, number | null];
-  formacion?: [number | null, number | null];
-  redes?: [number | null, number | null];
+  // Orden: 0=PSA, 1=TCC, 2=OTRO
+  teorico?: [number | null, number | null, number | null];
+  formacion?: [number | null, number | null, number | null];
+  redes?: [number | null, number | null, number | null];
 };
 
 type Payload = {
@@ -152,7 +153,7 @@ export async function POST(req: Request) {
     copyCont('psa', cont[0]);
     copyCont('tcc', cont[1]);
 
-    // Actividades (pares [psa, tcc])
+  // Actividades (tríos [psa, tcc, otro])
     const clamp = (n: unknown) => {
       const v = Number(n as number);
       if (!Number.isFinite(v)) return null;
@@ -161,14 +162,17 @@ export async function POST(req: Request) {
     if (Array.isArray(act.teorico)) {
       data.psa_teorico_percent = clamp(act.teorico[0]);
       data.tcc_teorico_percent = clamp(act.teorico[1]);
+      data.otro_teorico_percent = clamp(act.teorico[2]);
     }
     if (Array.isArray(act.formacion)) {
       data.psa_formacion_percent = clamp(act.formacion[0]);
       data.tcc_formacion_percent = clamp(act.formacion[1]);
+      data.otro_formacion_percent = clamp(act.formacion[2]);
     }
     if (Array.isArray(act.redes)) {
       data.psa_redes_percent = clamp(act.redes[0]);
       data.tcc_redes_percent = clamp(act.redes[1]);
+      data.otro_redes_percent = clamp(act.redes[2]);
     }
 
   // Narrowly cast just this property access to bypass missing type in build without using `any` directly

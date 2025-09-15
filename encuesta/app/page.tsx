@@ -86,9 +86,9 @@ type SurveyState = {
   porEnfoque: Array<ContItem>;
   };
   actividades: {
-    teorico: [number, number];
-    formacion: [number, number];
-    redes: [number, number];
+    teorico: [number, number, number];
+    formacion: [number, number, number];
+    redes: [number, number, number];
   };
 };
 
@@ -120,7 +120,7 @@ export default function Home() {
       ],
     },
   contingencias: { porEnfoque: Array.from({ length: 2 }, () => ({})) },
-  actividades: { teorico: [0, 0], formacion: [0, 0], redes: [0, 0] },
+  actividades: { teorico: [0, 0, 0], formacion: [0, 0, 0], redes: [0, 0, 0] },
   });
 
   // Envío al backend
@@ -175,9 +175,9 @@ export default function Home() {
                 : prev.contingencias.porEnfoque,
           },
           actividades: {
-            teorico: normalizePair(parsed.actividades?.teorico, [0, 0]),
-            formacion: normalizePair(parsed.actividades?.formacion, [0, 0]),
-            redes: normalizePair(parsed.actividades?.redes, [0, 0]),
+            teorico: normalizeTriple(parsed.actividades?.teorico, [0, 0, 0]),
+            formacion: normalizeTriple(parsed.actividades?.formacion, [0, 0, 0]),
+            redes: normalizeTriple(parsed.actividades?.redes, [0, 0, 0]),
           },
         }));
       }
@@ -347,12 +347,12 @@ export default function Home() {
               {state.step === 4 ? (
                 <SectionActividades
                   data={state.actividades}
-                  onChange={(cat: keyof SurveyState["actividades"], idx: 0 | 1, value: number) =>
+                  onChange={(cat: keyof SurveyState["actividades"], idx: 0 | 1 | 2, value: number) =>
                     setState((s) => {
                       const next = { ...s.actividades } as SurveyState["actividades"];
-                      const pair = [...(next[cat] as [number, number])] as [number, number];
-                      pair[idx] = clampPercent(value);
-                      next[cat] = pair;
+                      const triple = [...(next[cat] as [number, number, number])] as [number, number, number];
+                      triple[idx] = clampPercent(value);
+                      next[cat] = triple;
                       return { ...s, actividades: next };
                     })
                   }
@@ -377,11 +377,12 @@ function clampPercent(n: number) {
   return Math.round(n);
 }
 
-function normalizePair(arr: unknown, fallback: [number, number]): [number, number] {
-  if (Array.isArray(arr) && arr.length === 2) {
+function normalizeTriple(arr: unknown, fallback: [number, number, number]): [number, number, number] {
+  if (Array.isArray(arr) && arr.length === 3) {
     const a = Number(arr[0]);
     const b = Number(arr[1]);
-    return [Number.isFinite(a) ? a : 0, Number.isFinite(b) ? b : 0];
+    const c = Number(arr[2]);
+    return [Number.isFinite(a) ? a : 0, Number.isFinite(b) ? b : 0, Number.isFinite(c) ? c : 0];
   }
   return fallback;
 }
@@ -1199,15 +1200,15 @@ function SectionActividades({
   onBack,
   onSubmit,
 }: {
-  data: { teorico: [number, number]; formacion: [number, number]; redes: [number, number] };
-  onChange: (cat: "teorico" | "formacion" | "redes", idx: 0 | 1, value: number) => void;
+  data: { teorico: [number, number, number]; formacion: [number, number, number]; redes: [number, number, number] };
+  onChange: (cat: "teorico" | "formacion" | "redes", idx: 0 | 1 | 2, value: number) => void;
   onBack: () => void;
   onSubmit: () => void;
 }) {
-  const names: [string, string] = ["PSA", "TCC"];
+  const names: [string, string, string] = ["PSA", "TCC", "OTRO"];
 
-  const sum = (pair: [number, number]) => (pair?.[0] || 0) + (pair?.[1] || 0);
-  const okRow = (pair: [number, number]) => sum(pair) === 100;
+  const sum = (triple: [number, number, number]) => (triple?.[0] || 0) + (triple?.[1] || 0) + (triple?.[2] || 0);
+  const okRow = (triple: [number, number, number]) => sum(triple) === 100;
 
   const canSubmit = okRow(data.teorico) && okRow(data.formacion) && okRow(data.redes);
 
@@ -1215,55 +1216,42 @@ function SectionActividades({
     title,
     hint,
     cat,
-    pair,
+    triple,
   }: {
     title: string;
     hint: string;
     cat: "teorico" | "formacion" | "redes";
-    pair: [number, number];
+    triple: [number, number, number];
   }) => (
     <section className="border rounded-lg p-4 bg-white space-y-3">
       <h3 className="font-medium">{title}</h3>
       <p className="text-sm text-neutral-600">{hint}</p>
-      <div className="hidden sm:grid sm:grid-cols-3 text-xs text-neutral-500">
+      <div className="hidden sm:grid sm:grid-cols-4 text-xs text-neutral-500">
         <div>Enfoque</div>
-        <div className="sm:col-span-2 sm:text-right">Porcentaje de tiempo dedicado</div>
+        <div className="sm:col-span-3 sm:text-right">Porcentaje de tiempo dedicado</div>
       </div>
       <div className="grid gap-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
-          <div className="text-sm font-medium"><strong>{names[0]}</strong></div>
-          <div className="sm:col-span-2 flex items-center gap-2">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={pair?.[0] ?? 0}
-              onChange={(e) => onChange(cat, 0, Number(e.target.value))}
-              className="max-w-28"
-              placeholder="0"
-            />
-            <span className="text-sm">%</span>
+        {names.map((n, i) => (
+          <div key={n} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+            <div className="text-sm font-medium"><strong>{n}</strong></div>
+            <div className="sm:col-span-3 flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={triple?.[i] ?? 0}
+                onChange={(e) => onChange(cat, i as 0 | 1 | 2, Number(e.target.value))}
+                className="max-w-28"
+                placeholder="0"
+              />
+              <span className="text-sm">%</span>
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
-          <div className="text-sm font-medium"><strong>{names[1]}</strong></div>
-          <div className="sm:col-span-2 flex items-center gap-2">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={pair?.[1] ?? 0}
-              onChange={(e) => onChange(cat, 1, Number(e.target.value))}
-              className="max-w-28"
-              placeholder="0"
-            />
-            <span className="text-sm">%</span>
-          </div>
-        </div>
+        ))}
         <div className="flex items-center justify-between pt-1 border-t mt-2">
           <div className="text-sm text-neutral-700">Total</div>
-          <div className={`text-sm ${okRow(pair) ? "text-neutral-900" : "text-red-600"}`}>
-            {sum(pair)} % {okRow(pair) ? "" : "(debe sumar 100%)"}
+          <div className={`text-sm ${okRow(triple) ? "text-neutral-900" : "text-red-600"}`}>
+            {sum(triple)} % {okRow(triple) ? "" : "(debe sumar 100%)"}
           </div>
         </div>
       </div>
@@ -1290,21 +1278,21 @@ function SectionActividades({
         title="Consumo de Material Teórico (no obligatorio)"
         hint="(Lectura de libros/artículos, ver videos, escuchar podcasts, etc.)"
         cat="teorico"
-        pair={data.teorico}
+        triple={data.teorico}
       />
 
       <Row
         title="Participación en Actividades de Formación"
         hint="(Asistencia a charlas, seminarios, talleres, grupos de estudio, debates etc.)"
         cat="formacion"
-        pair={data.formacion}
+        triple={data.formacion}
       />
 
       <Row
         title="Consumo Cultural en Redes Sociales"
-  hint="(Seguimiento de cuentas en redes sociales (p. ej., Instagram, YouTube, TikTok, X, Facebook) o participación en grupos (p. ej., WhatsApp, Telegram) relacionados con los enfoques)"
+        hint="(Seguimiento de cuentas en redes sociales (p. ej., Instagram, YouTube, TikTok, X, Facebook) o participación en grupos (p. ej., WhatsApp, Telegram) relacionados con los enfoques)"
         cat="redes"
-        pair={data.redes}
+        triple={data.redes}
       />
 
       <div className="flex items-center justify-between pt-2">

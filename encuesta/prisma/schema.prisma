@@ -115,10 +115,13 @@ model SurveyResponse {
   // ------------------ Sección Actividades (porcentajes 0..100) ------------------
   psa_teorico_percent       Int?
   tcc_teorico_percent       Int?
+  otro_teorico_percent      Int? // Nuevo: porcentaje para opción OTRO
   psa_formacion_percent     Int?
   tcc_formacion_percent     Int?
+  otro_formacion_percent    Int? // Nuevo: porcentaje para opción OTRO
   psa_redes_percent         Int?
   tcc_redes_percent         Int?
+  otro_redes_percent        Int? // Nuevo: porcentaje para opción OTRO
 
 }
 
