@@ -44,7 +44,6 @@ model SurveyResponse {
   contacto_previo_enfoque           String?
   materias_electivas_occurrence     Boolean?
   materias_electivas_detalle        String?
-  enfoques_conocidos_list           String?
   adscripcion_teorica_occurrence    Boolean?
   adscripcion_teorica_cual          String?
 

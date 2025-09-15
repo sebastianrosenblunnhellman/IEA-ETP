@@ -676,11 +676,11 @@ function SectionAForm({
       <div>
         <FieldLabel>8. Contacto con pares</FieldLabel>
   <p className="text-sm text-neutral-600 mb-2">
-          Piense en su círculo cercano de compañeros/as o amigos/as de la facultad. Señale a qué enfoques pertenecen mayoritariamente y, si lo desea, estime qué porcentaje de ellos se identifica con cada uno.
+          Piense en su círculo cercano de amigos/as de la facultad. Señale a qué enfoque pertenecen mayoritariamente.
         </p>
         <TextArea
           rows={3}
-          placeholder="Ej.: Psicoanálisis 60%, Cognitivo 25%, Sistémico 10%, Humanista 5%"
+          placeholder="Ej.: Psicoanálisis, Cognitivo, Sistémico, Humanista, etc."
           value={data.contactoPares || ""}
           onChange={(e) => onChange("contactoPares", e.target.value)}
         />
@@ -690,7 +690,7 @@ function SectionAForm({
       <div>
         <FieldLabel required>9. Contacto previo con psicología antes de la carrera</FieldLabel>
   <p className="text-sm text-neutral-600 mb-2">
-          ¿Tuvo un contacto significativo (familiares, amigos/as, como paciente) que influyera en su visión inicial?
+          ¿Tuvo un contacto significativo (familiares, amigos/as, como paciente, influencers, etc.) que influyera en su visión inicial?
         </p>
         <div className="flex gap-6">
           {(["Sí", "No"] as SiNo[]).map((v) => (
@@ -742,23 +742,11 @@ function SectionAForm({
         )}
       </div>
 
-      {/* 11. Conocimiento general de enfoques teóricos */}
-      <div>
-        <FieldLabel>11. Conocimiento general de enfoques teóricos</FieldLabel>
-        <p className="text-sm text-neutral-600 mb-2">
-          Mencione todos los enfoques teóricos de la psicología que conozca. Sepárelos con comas.
-        </p>
-        <TextArea
-          rows={3}
-          placeholder="Ej.: Psicoanálisis, Terapia Sistémica, Gestalt, Psicología Cognitiva, etc."
-          value={data.enfoquesConocidos || ""}
-          onChange={(e) => onChange("enfoquesConocidos", e.target.value)}
-        />
-      </div>
+  {/* (La pregunta original 11 sobre conocimiento general de enfoques fue eliminada) */}
 
       {/* Adscripción teórica personal */}
       <div>
-        <FieldLabel>Adscripción teórica personal</FieldLabel>
+        <FieldLabel>11. Adscripción teórica personal</FieldLabel>
         <p className="text-sm text-neutral-600 mb-2">¿Considera usted que adscribe a un determinado enfoque teórico?</p>
         <div className="flex gap-6">
           {(["Sí", "No"] as SiNo[]).map((v) => (

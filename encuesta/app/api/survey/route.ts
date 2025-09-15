@@ -104,7 +104,6 @@ export async function POST(req: Request) {
       contacto_previo_enfoque: a.contactoPrevioEnfoque || null,
       materias_electivas_occurrence: toBool(a.materiasElectivas),
       materias_electivas_detalle: a.materiasElectivasDetalle || null,
-      enfoques_conocidos_list: a.enfoquesConocidos || null,
       adscripcion_teorica_occurrence: toBool(a.adscripcionTeorica),
       adscripcion_teorica_cual: a.adscripcionCual || null,
     };
