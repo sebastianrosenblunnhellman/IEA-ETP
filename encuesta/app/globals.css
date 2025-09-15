@@ -1,24 +1,31 @@
 @import "tailwindcss";
 
+/* Colores base (modo claro por defecto). Evitamos depender del UA dark-mode cuando no hay clase .dark */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light;
 }
 
 /* Removed unsupported @theme inline for broader compatibility */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Activar modo oscuro solo cuando haya clase .dark en html */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  color-scheme: dark;
 }
 
-body {
+html, body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Previene que motores apliquen color automático en dark-mode cuando no queremos */
+  forced-color-adjust: none;
 }
+
+/* Clase utilitaria por si se requiere reestablecer color cuando algún build minificado lo sobrescribe */
+.text-base-color { color: var(--foreground); }
 
 /* UX: readable measure and subtle background */
 main, .container {
