@@ -183,7 +183,7 @@ export default function Home() {
       if (!res.ok) throw new Error('Error al guardar');
       const json = await res.json();
       if (json?.ok) setState((s) => ({ ...s, step: 5 }));
-    } catch (e) {
+    } catch {
       alert('Hubo un problema al enviar la encuesta. Intente nuevamente.');
     }
   };
@@ -420,26 +420,48 @@ export default function Home() {
                   data={state.actividades}
                   onChange={(cat: "teorico" | "formacion" | "redes", idx: 0 | 1 | 2, value: number) =>
                     setState((s) => {
-                      const next = { ...s.actividades } as SurveyState["actividades"];
-                      const triple = [...(next[cat] as [number, number, number])] as [number, number, number];
-                      triple[idx] = clampPercent(value);
-                      (next as any)[cat] = triple;
+                      const next: SurveyState["actividades"] = { ...s.actividades };
+                      const apply = (arr: [number, number, number]) => {
+                        const triple: [number, number, number] = [...arr];
+                        triple[idx] = clampPercent(value);
+                        return triple;
+                      };
+                      switch (cat) {
+                        case 'teorico':
+                          next.teorico = apply(next.teorico);
+                          break;
+                        case 'formacion':
+                          next.formacion = apply(next.formacion);
+                          break;
+                        case 'redes':
+                          next.redes = apply(next.redes);
+                          break;
+                      }
                       return { ...s, actividades: next };
                     })
                   }
                   onToggleNone={(cat: "teorico" | "formacion" | "redes", none: boolean) =>
                     setState((s) => {
-                      const next = { ...s.actividades } as SurveyState["actividades"] & { [k: string]: any };
-                      const flagKey = cat === "teorico" ? "noTeorico" : cat === "formacion" ? "noFormacion" : "noRedes";
-                      next[flagKey] = none;
-                      if (none) {
-                        (next as any)[cat] = [0, 0, 0] as [number, number, number];
+                      const next: SurveyState["actividades"] = { ...s.actividades };
+                      switch (cat) {
+                        case 'teorico':
+                          next.noTeorico = none;
+                          if (none) next.teorico = [0, 0, 0];
+                          break;
+                        case 'formacion':
+                          next.noFormacion = none;
+                          if (none) next.formacion = [0, 0, 0];
+                          break;
+                        case 'redes':
+                          next.noRedes = none;
+                          if (none) next.redes = [0, 0, 0];
+                          break;
                       }
                       return { ...s, actividades: next };
                     })
                   }
                   onChangeOtroLabel={(label: string) =>
-                    setState((s) => ({ ...s, actividades: { ...(s.actividades as any), otroLabel: label } }))
+                    setState((s) => ({ ...s, actividades: { ...s.actividades, otroLabel: label } }))
                   }
                   onBack={back}
                   onSubmit={submitSurvey}
@@ -758,21 +780,21 @@ function SectionAForm({
               label="Psicoanálisis"
               value="psicoanalisis"
               checked={data.contactoParesOpcion === "psicoanalisis"}
-              onChange={(e) => onChange("contactoParesOpcion", e.target.value as any)}
+              onChange={(e) => onChange("contactoParesOpcion", e.target.value as ContactoParesOpcion)}
             />
             <Radio
               name="contactoPares"
               label="Terapia Cognitivo-Conductual"
               value="tcc"
               checked={data.contactoParesOpcion === "tcc"}
-              onChange={(e) => onChange("contactoParesOpcion", e.target.value as any)}
+              onChange={(e) => onChange("contactoParesOpcion", e.target.value as ContactoParesOpcion)}
             />
             <Radio
               name="contactoPares"
               label="Otro"
               value="otro"
               checked={data.contactoParesOpcion === "otro"}
-              onChange={(e) => onChange("contactoParesOpcion", e.target.value as any)}
+              onChange={(e) => onChange("contactoParesOpcion", e.target.value as ContactoParesOpcion)}
             />
           </div>
           {data.contactoParesOpcion === "otro" && (
@@ -873,14 +895,14 @@ function SectionAForm({
               <div className="mt-3">
                 <div className="text-sm mb-1">¿Qué tan probable es que cambie de posición?</div>
                 <div className="flex flex-wrap gap-4 text-sm">
-                  {[1,2,3,4,5].map((n) => (
+                  {([1,2,3,4,5] as const).map((n) => (
                     <label key={n} className="inline-flex items-center gap-2">
                       <input
                         type="radio"
                         name="adscripcionCambio"
                         value={n}
-                        checked={data.adscripcionCambio === (n as any)}
-                        onChange={() => onChange("adscripcionCambio", n as any)}
+                        checked={data.adscripcionCambio === n}
+                        onChange={() => onChange("adscripcionCambio", n)}
                         className="h-4 w-4"
                       />
                       {n === 1
@@ -1471,7 +1493,7 @@ function SectionActividades({
 
       {(((data.teorico?.[2] || 0) > 0) || ((data.formacion?.[2] || 0) > 0) || ((data.redes?.[2] || 0) > 0)) && (
         <div className="mt-1 flex items-center gap-2">
-          <span className="text-sm">Etiqueta para "OTRO":</span>
+          <span className="text-sm">Etiqueta para &quot;OTRO&quot;:</span>
           <Input
             placeholder="Especifique (opcional)"
             value={data.otroLabel || ""}
