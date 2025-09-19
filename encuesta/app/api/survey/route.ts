@@ -7,13 +7,13 @@ type SectionA = {
   generoOtro?: string;
   anioInicio?: number | string;
   situacion?: string;
-  promedio?: number | string;
   participacionDocencia?: boolean | string | number;
   participacionDetalle?: string;
   influenciaDocente?: boolean | string | number;
   influenciaMateria?: string;
   influenciaEnfoque?: string;
-  contactoPares?: string;
+  contactoParesOpcion?: string;
+  contactoParesOtro?: string;
   contactoPrevio?: boolean | string | number;
   contactoPrevioEnfoque?: string;
   materiasElectivas?: boolean | string | number;
@@ -21,6 +21,7 @@ type SectionA = {
   enfoquesConocidos?: string;
   adscripcionTeorica?: boolean | string | number;
   adscripcionCual?: string;
+  adscripcionCambio?: number | string;
 };
 
 type Enfoque = {
@@ -32,25 +33,43 @@ type ContItem = {
   docentePos?: number | null;
   docenteNeg?: number | null;
   califAlta?: number | null;
-  califAltaValencia?: 'positivos' | 'negativos' | 'neutros' | null;
   califBaja?: number | null;
-  califBajaValencia?: 'positivos' | 'negativos' | 'neutros' | null;
+  docentePosVal?: number | null;
+  docenteNegVal?: number | null;
+  califAltaVal?: number | null;
+  califBajaVal?: number | null;
   obsDocentePos?: number | null;
   obsDocenteNeg?: number | null;
+  obsDocentePosVal?: number | null;
+  obsDocenteNegVal?: number | null;
   paresPos?: number | null;
   paresNeg?: number | null;
+  paresPosVal?: number | null;
+  paresNegVal?: number | null;
   obsParesPos?: number | null;
   obsParesNeg?: number | null;
+  obsParesPosVal?: number | null;
+  obsParesNegVal?: number | null;
   teoriaPos?: number | null;
   teoriaNeg?: number | null;
   teoricoClaro?: number | null;
   teoricoConfuso?: number | null;
+  teoriaPosVal?: number | null;
+  teoriaNegVal?: number | null;
+  teoricoClaroVal?: number | null;
+  teoricoConfusoVal?: number | null;
   clinicoPos?: number | null;
   clinicoNeg?: number | null;
   relatosPos?: number | null;
   relatosNeg?: number | null;
+  clinicoPosVal?: number | null;
+  clinicoNegVal?: number | null;
+  relatosPosVal?: number | null;
+  relatosNegVal?: number | null;
   familiaPos?: number | null;
   familiaNeg?: number | null;
+  familiaPosVal?: number | null;
+  familiaNegVal?: number | null;
 };
 
 type Actividades = {
@@ -58,6 +77,10 @@ type Actividades = {
   teorico?: [number | null, number | null, number | null];
   formacion?: [number | null, number | null, number | null];
   redes?: [number | null, number | null, number | null];
+  noTeorico?: boolean | number | string;
+  noFormacion?: boolean | number | string;
+  noRedes?: boolean | number | string;
+  otroLabel?: string;
 };
 
 type Payload = {
@@ -94,19 +117,21 @@ export async function POST(req: Request) {
       genero_otro: a.generoOtro || null,
       anio_inicio: a.anioInicio ? Number(a.anioInicio) : null,
       situacion_academica: a.situacion || null,
-      promedio: a.promedio ? Number(a.promedio) : null,
+  // promedio eliminado
       participacion_docencia_occurrence: toBool(a.participacionDocencia),
       participacion_docencia_detalle: a.participacionDetalle || null,
       influencia_docente_occurrence: toBool(a.influenciaDocente),
       influencia_docente_materia: a.influenciaMateria || null,
       influencia_docente_enfoque: a.influenciaEnfoque || null,
-      contacto_pares_text: a.contactoPares || null,
+  contacto_pares_opcion: a.contactoParesOpcion || null,
+  contacto_pares_otro: a.contactoParesOtro || null,
       contacto_previo_occurrence: toBool(a.contactoPrevio),
       contacto_previo_enfoque: a.contactoPrevioEnfoque || null,
       materias_electivas_occurrence: toBool(a.materiasElectivas),
       materias_electivas_detalle: a.materiasElectivasDetalle || null,
       adscripcion_teorica_occurrence: toBool(a.adscripcionTeorica),
-      adscripcion_teorica_cual: a.adscripcionCual || null,
+  adscripcion_teorica_cual: a.adscripcionCual || null,
+  adscripcion_teorica_cambio: a.adscripcionCambio ? Number(a.adscripcionCambio) : null,
     };
 
     // Teóricos: asumimos index 0=PSA, 1=TCC
@@ -123,31 +148,49 @@ export async function POST(req: Request) {
   const copyCont = (prefix: 'psa' | 'tcc', c?: ContItem) => {
       if (!c) return;
       data[`${prefix}_docentePos_frequency`] = c.docentePos ?? null;
+      data[`${prefix}_docentePos_valence`] = c.docentePosVal ?? null;
       data[`${prefix}_docenteNeg_frequency`] = c.docenteNeg ?? null;
+      data[`${prefix}_docenteNeg_valence`] = c.docenteNegVal ?? null;
       data[`${prefix}_califAlta_frequency`] = c.califAlta ?? null;
-      data[`${prefix}_califAlta_valence`] = c.califAltaValencia ?? null;
+      data[`${prefix}_califAlta_valence`] = c.califAltaVal ?? null;
       data[`${prefix}_califBaja_frequency`] = c.califBaja ?? null;
-      data[`${prefix}_califBaja_valence`] = c.califBajaValencia ?? null;
+      data[`${prefix}_califBaja_valence`] = c.califBajaVal ?? null;
       data[`${prefix}_obsDocentePos_frequency`] = c.obsDocentePos ?? null;
+      data[`${prefix}_obsDocentePos_valence`] = c.obsDocentePosVal ?? null;
       data[`${prefix}_obsDocenteNeg_frequency`] = c.obsDocenteNeg ?? null;
+      data[`${prefix}_obsDocenteNeg_valence`] = c.obsDocenteNegVal ?? null;
 
       data[`${prefix}_paresPos_frequency`] = c.paresPos ?? null;
+      data[`${prefix}_paresPos_valence`] = c.paresPosVal ?? null;
       data[`${prefix}_paresNeg_frequency`] = c.paresNeg ?? null;
+      data[`${prefix}_paresNeg_valence`] = c.paresNegVal ?? null;
       data[`${prefix}_obsParesPos_frequency`] = c.obsParesPos ?? null;
+      data[`${prefix}_obsParesPos_valence`] = c.obsParesPosVal ?? null;
       data[`${prefix}_obsParesNeg_frequency`] = c.obsParesNeg ?? null;
+      data[`${prefix}_obsParesNeg_valence`] = c.obsParesNegVal ?? null;
 
       data[`${prefix}_teoriaPos_frequency`] = c.teoriaPos ?? null;
+      data[`${prefix}_teoriaPos_valence`] = c.teoriaPosVal ?? null;
       data[`${prefix}_teoriaNeg_frequency`] = c.teoriaNeg ?? null;
+      data[`${prefix}_teoriaNeg_valence`] = c.teoriaNegVal ?? null;
       data[`${prefix}_teoricoClaro_frequency`] = c.teoricoClaro ?? null;
+      data[`${prefix}_teoricoClaro_valence`] = c.teoricoClaroVal ?? null;
       data[`${prefix}_teoricoConfuso_frequency`] = c.teoricoConfuso ?? null;
+      data[`${prefix}_teoricoConfuso_valence`] = c.teoricoConfusoVal ?? null;
 
       data[`${prefix}_clinicoPos_frequency`] = c.clinicoPos ?? null;
+      data[`${prefix}_clinicoPos_valence`] = c.clinicoPosVal ?? null;
       data[`${prefix}_clinicoNeg_frequency`] = c.clinicoNeg ?? null;
+      data[`${prefix}_clinicoNeg_valence`] = c.clinicoNegVal ?? null;
       data[`${prefix}_relatosPos_frequency`] = c.relatosPos ?? null;
+      data[`${prefix}_relatosPos_valence`] = c.relatosPosVal ?? null;
       data[`${prefix}_relatosNeg_frequency`] = c.relatosNeg ?? null;
+      data[`${prefix}_relatosNeg_valence`] = c.relatosNegVal ?? null;
 
       data[`${prefix}_familiaPos_frequency`] = c.familiaPos ?? null;
+      data[`${prefix}_familiaPos_valence`] = c.familiaPosVal ?? null;
       data[`${prefix}_familiaNeg_frequency`] = c.familiaNeg ?? null;
+      data[`${prefix}_familiaNeg_valence`] = c.familiaNegVal ?? null;
     };
 
     copyCont('psa', cont[0]);
@@ -174,6 +217,10 @@ export async function POST(req: Request) {
       data.tcc_redes_percent = clamp(act.redes[1]);
       data.otro_redes_percent = clamp(act.redes[2]);
     }
+    data.no_teorico = toBool(act.noTeorico);
+    data.no_formacion = toBool(act.noFormacion);
+    data.no_redes = toBool(act.noRedes);
+    data.otro_label = act.otroLabel || null;
 
   // Narrowly cast just this property access to bypass missing type in build without using `any` directly
   const p = prisma as unknown as { surveyResponse: { create: (args: { data: Record<string, unknown> }) => Promise<{ id: string }> } };

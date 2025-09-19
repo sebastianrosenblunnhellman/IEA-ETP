@@ -33,19 +33,20 @@ model SurveyResponse {
   genero_otro               String?
   anio_inicio               Int?
   situacion_academica       String?
-  promedio                  Float?
   participacion_docencia_occurrence Boolean?
   participacion_docencia_detalle    String?
   influencia_docente_occurrence     Boolean?
   influencia_docente_materia        String?
   influencia_docente_enfoque        String?
-  contacto_pares_text               String?
+  contacto_pares_opcion             String?
+  contacto_pares_otro               String?
   contacto_previo_occurrence        Boolean?
   contacto_previo_enfoque           String?
   materias_electivas_occurrence     Boolean?
   materias_electivas_detalle        String?
   adscripcion_teorica_occurrence    Boolean?
   adscripcion_teorica_cual          String?
+  adscripcion_teorica_cambio        Int?
 
   // ------------------ Sección Teóricos (PSA/TCC) ------------------
   psa_preferencia           Int?
@@ -58,18 +59,26 @@ model SurveyResponse {
   psa_docentePos_frequency  Int?
   psa_docenteNeg_frequency  Int?
   psa_califAlta_frequency   Int?
-  psa_califAlta_valence     Valencia?
+  psa_califAlta_valence     Int?
   psa_califBaja_frequency   Int?
-  psa_califBaja_valence     Valencia?
+  psa_califBaja_valence     Int?
+  psa_docentePos_valence    Int?
+  psa_docenteNeg_valence    Int?
+  psa_obsDocentePos_valence Int?
+  psa_obsDocenteNeg_valence Int?
   psa_obsDocentePos_frequency Int?
   psa_obsDocenteNeg_frequency Int?
 
   tcc_docentePos_frequency  Int?
   tcc_docenteNeg_frequency  Int?
   tcc_califAlta_frequency   Int?
-  tcc_califAlta_valence     Valencia?
+  tcc_califAlta_valence     Int?
   tcc_califBaja_frequency   Int?
-  tcc_califBaja_valence     Valencia?
+  tcc_califBaja_valence     Int?
+  tcc_docentePos_valence    Int?
+  tcc_docenteNeg_valence    Int?
+  tcc_obsDocentePos_valence Int?
+  tcc_obsDocenteNeg_valence Int?
   tcc_obsDocentePos_frequency Int?
   tcc_obsDocenteNeg_frequency Int?
 
@@ -78,39 +87,69 @@ model SurveyResponse {
   psa_paresNeg_frequency    Int?
   psa_obsParesPos_frequency Int?
   psa_obsParesNeg_frequency Int?
+  // Valencia para pares y observación de pares
+  psa_paresPos_valence      Int?
+  psa_paresNeg_valence      Int?
+  psa_obsParesPos_valence   Int?
+  psa_obsParesNeg_valence   Int?
 
   tcc_paresPos_frequency    Int?
   tcc_paresNeg_frequency    Int?
   tcc_obsParesPos_frequency Int?
   tcc_obsParesNeg_frequency Int?
+  // Valencia para pares y observación de pares
+  tcc_paresPos_valence      Int?
+  tcc_paresNeg_valence      Int?
+  tcc_obsParesPos_valence   Int?
+  tcc_obsParesNeg_valence   Int?
 
   // Contenido teórico
   psa_teoriaPos_frequency   Int?
   psa_teoriaNeg_frequency   Int?
   psa_teoricoClaro_frequency Int?
   psa_teoricoConfuso_frequency Int?
+  psa_teoriaPos_valence     Int?
+  psa_teoriaNeg_valence     Int?
+  psa_teoricoClaro_valence  Int?
+  psa_teoricoConfuso_valence Int?
 
   tcc_teoriaPos_frequency   Int?
   tcc_teoriaNeg_frequency   Int?
   tcc_teoricoClaro_frequency Int?
   tcc_teoricoConfuso_frequency Int?
+  tcc_teoriaPos_valence     Int?
+  tcc_teoriaNeg_valence     Int?
+  tcc_teoricoClaro_valence  Int?
+  tcc_teoricoConfuso_valence Int?
 
   // Clínico / Relatos
   psa_clinicoPos_frequency  Int?
   psa_clinicoNeg_frequency  Int?
   psa_relatosPos_frequency  Int?
   psa_relatosNeg_frequency  Int?
+  psa_clinicoPos_valence    Int?
+  psa_clinicoNeg_valence    Int?
+  psa_relatosPos_valence    Int?
+  psa_relatosNeg_valence    Int?
 
   tcc_clinicoPos_frequency  Int?
   tcc_clinicoNeg_frequency  Int?
   tcc_relatosPos_frequency  Int?
   tcc_relatosNeg_frequency  Int?
+  tcc_clinicoPos_valence    Int?
+  tcc_clinicoNeg_valence    Int?
+  tcc_relatosPos_valence    Int?
+  tcc_relatosNeg_valence    Int?
 
   // Familiar
   psa_familiaPos_frequency  Int?
   psa_familiaNeg_frequency  Int?
   tcc_familiaPos_frequency  Int?
   tcc_familiaNeg_frequency  Int?
+  psa_familiaPos_valence    Int?
+  psa_familiaNeg_valence    Int?
+  tcc_familiaPos_valence    Int?
+  tcc_familiaNeg_valence    Int?
 
   // ------------------ Sección Actividades (porcentajes 0..100) ------------------
   psa_teorico_percent       Int?
@@ -122,13 +161,12 @@ model SurveyResponse {
   psa_redes_percent         Int?
   tcc_redes_percent         Int?
   otro_redes_percent        Int? // Nuevo: porcentaje para opción OTRO
+  // Flags y etiqueta para actividades
+  no_teorico                Boolean?
+  no_formacion              Boolean?
+  no_redes                  Boolean?
+  otro_label                String?
 
-}
-
-enum Valencia {
-  positivos
-  negativos
-  neutros
 }
   // ------------------ Cómo nombrar columnas del cuestionario ------------------
   // 1) Variables con múltiples dimensiones de la misma pregunta

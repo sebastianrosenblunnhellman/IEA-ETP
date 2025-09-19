@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Genero = "Femenino" | "Masculino" | "No binario" | "Otro" | "Prefiero no responder" | "";
+type Genero = "Femenino" | "Masculino" | "Otro" | "";
 
 type SituacionAcademica =
   | "CBC"
@@ -15,6 +15,7 @@ type SituacionAcademica =
 type SiNo = "Sí" | "No" | "";
 
 type Enfoque = string; // texto libre por ahora
+type ContactoParesOpcion = "psicoanalisis" | "tcc" | "otro" | "";
 
 type SectionA = {
   edad: string;
@@ -22,13 +23,13 @@ type SectionA = {
   generoOtro?: string;
   anioInicio: string;
   situacion: SituacionAcademica;
-  promedio: string; // 0-10
   participacionDocencia: SiNo;
   participacionDetalle?: string;
   influenciaDocente: SiNo;
   influenciaMateria?: string;
   influenciaEnfoque?: Enfoque;
-  contactoPares?: string; // texto libre + porcentajes si desea
+  contactoParesOpcion?: ContactoParesOpcion;
+  contactoParesOtro?: string;
   contactoPrevio: SiNo;
   contactoPrevioEnfoque?: Enfoque;
   materiasElectivas: SiNo;
@@ -37,15 +38,14 @@ type SectionA = {
   enfoquesConocidos?: string; // lista separada por comas
   adscripcionTeorica?: SiNo;
   adscripcionCual?: string;
+  adscripcionCambio?: 1 | 2 | 3 | 4 | 5;
 };
 
 type ContItem = {
   docentePos?: number;
   docenteNeg?: number;
   califAlta?: number;
-  califAltaValencia?: "positivos" | "negativos" | "neutros";
   califBaja?: number;
-  califBajaValencia?: "positivos" | "negativos" | "neutros";
   obsDocentePos?: number;
   obsDocenteNeg?: number;
   paresPos?: number;
@@ -62,13 +62,51 @@ type ContItem = {
   relatosNeg?: number;
   familiaPos?: number;
   familiaNeg?: number;
+  // Valencia 5 puntos (1..5) para cada ítem, solo aplica cuando frecuencia > 0
+  docentePosVal?: 1 | 2 | 3 | 4 | 5;
+  docenteNegVal?: 1 | 2 | 3 | 4 | 5;
+  califAltaVal?: 1 | 2 | 3 | 4 | 5;
+  califBajaVal?: 1 | 2 | 3 | 4 | 5;
+  obsDocentePosVal?: 1 | 2 | 3 | 4 | 5;
+  obsDocenteNegVal?: 1 | 2 | 3 | 4 | 5;
+  paresPosVal?: 1 | 2 | 3 | 4 | 5;
+  paresNegVal?: 1 | 2 | 3 | 4 | 5;
+  obsParesPosVal?: 1 | 2 | 3 | 4 | 5;
+  obsParesNegVal?: 1 | 2 | 3 | 4 | 5;
+  teoriaPosVal?: 1 | 2 | 3 | 4 | 5;
+  teoriaNegVal?: 1 | 2 | 3 | 4 | 5;
+  teoricoClaroVal?: 1 | 2 | 3 | 4 | 5;
+  teoricoConfusoVal?: 1 | 2 | 3 | 4 | 5;
+  clinicoPosVal?: 1 | 2 | 3 | 4 | 5;
+  clinicoNegVal?: 1 | 2 | 3 | 4 | 5;
+  relatosPosVal?: 1 | 2 | 3 | 4 | 5;
+  relatosNegVal?: 1 | 2 | 3 | 4 | 5;
+  familiaPosVal?: 1 | 2 | 3 | 4 | 5;
+  familiaNegVal?: 1 | 2 | 3 | 4 | 5;
 };
 
-// Claves numéricas de ContItem (excluye los campos de valencia de texto)
-type NumericContKey = Exclude<
-  keyof ContItem,
-  "califAltaValencia" | "califBajaValencia"
->;
+// Claves numéricas de frecuencia (todas requieren valencia 5 puntos cuando frecuencia > 0)
+type NumericContKey =
+  | "docentePos"
+  | "docenteNeg"
+  | "califAlta"
+  | "califBaja"
+  | "obsDocentePos"
+  | "obsDocenteNeg"
+  | "paresPos"
+  | "paresNeg"
+  | "obsParesPos"
+  | "obsParesNeg"
+  | "teoriaPos"
+  | "teoriaNeg"
+  | "teoricoClaro"
+  | "teoricoConfuso"
+  | "clinicoPos"
+  | "clinicoNeg"
+  | "relatosPos"
+  | "relatosNeg"
+  | "familiaPos"
+  | "familiaNeg";
 
 type SurveyState = {
   step: number; // 0=Intro, 1=Sección A, ...
@@ -89,6 +127,10 @@ type SurveyState = {
     teorico: [number, number, number];
     formacion: [number, number, number];
     redes: [number, number, number];
+    noTeorico?: boolean;
+    noFormacion?: boolean;
+    noRedes?: boolean;
+    otroLabel?: string;
   };
 };
 
@@ -97,15 +139,16 @@ const emptyA: SectionA = {
   genero: "",
   anioInicio: "",
   situacion: "",
-  promedio: "",
   participacionDocencia: "",
   influenciaDocente: "",
-  contactoPares: "",
+  contactoParesOpcion: "",
+  contactoParesOtro: "",
   contactoPrevio: "",
   materiasElectivas: "",
   enfoquesConocidos: "",
   adscripcionTeorica: "",
   adscripcionCual: "",
+  adscripcionCambio: undefined,
 };
 
 export default function Home() {
@@ -120,7 +163,7 @@ export default function Home() {
       ],
     },
   contingencias: { porEnfoque: Array.from({ length: 2 }, () => ({})) },
-  actividades: { teorico: [0, 0, 0], formacion: [0, 0, 0], redes: [0, 0, 0] },
+  actividades: { teorico: [0, 0, 0], formacion: [0, 0, 0], redes: [0, 0, 0], noTeorico: false, noFormacion: false, noRedes: false, otroLabel: "" },
   });
 
   // Envío al backend
@@ -250,7 +293,7 @@ export default function Home() {
       .map(({ i }) => i);
     // Si no hay enfoques incluidos, no se exige esta sección
     if (indices.length === 0) return true;
-    const numericKeys: (keyof ContItem)[] = [
+    const numericKeys: NumericContKey[] = [
       "docentePos",
       "docenteNeg",
       "califAlta",
@@ -272,13 +315,40 @@ export default function Home() {
       "familiaPos",
       "familiaNeg",
     ];
+    const valenceKeyMap: Record<NumericContKey, keyof ContItem> = {
+      docentePos: "docentePosVal",
+      docenteNeg: "docenteNegVal",
+      califAlta: "califAltaVal",
+      califBaja: "califBajaVal",
+      obsDocentePos: "obsDocentePosVal",
+      obsDocenteNeg: "obsDocenteNegVal",
+      paresPos: "paresPosVal",
+      paresNeg: "paresNegVal",
+      obsParesPos: "obsParesPosVal",
+      obsParesNeg: "obsParesNegVal",
+      teoriaPos: "teoriaPosVal",
+      teoriaNeg: "teoriaNegVal",
+      teoricoClaro: "teoricoClaroVal",
+      teoricoConfuso: "teoricoConfusoVal",
+      clinicoPos: "clinicoPosVal",
+      clinicoNeg: "clinicoNegVal",
+      relatosPos: "relatosPosVal",
+      relatosNeg: "relatosNegVal",
+      familiaPos: "familiaPosVal",
+      familiaNeg: "familiaNegVal",
+    } as const;
     for (const i of indices) {
       const c = state.contingencias.porEnfoque[i] || {};
       for (const k of numericKeys) {
-        const v = c[k];
+        const v = c[k as keyof ContItem] as unknown as number | undefined;
         if (typeof v !== "number" || v < 0 || v > 6) return false;
+        // Si la frecuencia es > 0, exigir valencia 1..5
+        if (v > 0) {
+          const vk = valenceKeyMap[k];
+          const vv = c[vk] as unknown as number | undefined;
+          if (typeof vv !== "number" || vv < 1 || vv > 5) return false;
+        }
       }
-      if (!c.califAltaValencia || !c.califBajaValencia) return false;
     }
     return true;
   }, [state.contingencias.porEnfoque, state.teoricos.enfoques]);
@@ -347,14 +417,28 @@ export default function Home() {
               {state.step === 4 ? (
                 <SectionActividades
                   data={state.actividades}
-                  onChange={(cat: keyof SurveyState["actividades"], idx: 0 | 1 | 2, value: number) =>
+                  onChange={(cat: "teorico" | "formacion" | "redes", idx: 0 | 1 | 2, value: number) =>
                     setState((s) => {
                       const next = { ...s.actividades } as SurveyState["actividades"];
                       const triple = [...(next[cat] as [number, number, number])] as [number, number, number];
                       triple[idx] = clampPercent(value);
-                      next[cat] = triple;
+                      (next as any)[cat] = triple;
                       return { ...s, actividades: next };
                     })
+                  }
+                  onToggleNone={(cat: "teorico" | "formacion" | "redes", none: boolean) =>
+                    setState((s) => {
+                      const next = { ...s.actividades } as SurveyState["actividades"] & { [k: string]: any };
+                      const flagKey = cat === "teorico" ? "noTeorico" : cat === "formacion" ? "noFormacion" : "noRedes";
+                      next[flagKey] = none;
+                      if (none) {
+                        (next as any)[cat] = [0, 0, 0] as [number, number, number];
+                      }
+                      return { ...s, actividades: next };
+                    })
+                  }
+                  onChangeOtroLabel={(label: string) =>
+                    setState((s) => ({ ...s, actividades: { ...(s.actividades as any), otroLabel: label } }))
                   }
                   onBack={back}
                   onSubmit={submitSurvey}
@@ -529,8 +613,8 @@ function SectionAForm({
       {/* 2. Género */}
       <div>
         <FieldLabel required>2. Género / Identidad de género</FieldLabel>
-  <div className="flex flex-wrap gap-4">
-          {(["Femenino", "Masculino", "No binario", "Otro", "Prefiero no responder"] as Genero[]).map(
+        <div className="flex flex-wrap gap-4">
+          {(["Femenino", "Masculino", "Otro"] as Genero[]).map(
             (g) => (
               <Radio
                 key={g}
@@ -596,25 +680,12 @@ function SectionAForm({
         </div>
       </div>
 
-      {/* 5. Promedio */}
-      <div>
-  <FieldLabel>5. Promedio académico general aproximado (0–10)</FieldLabel>
-        <Input
-          type="number"
-          min={0}
-          max={10}
-          step={0.1}
-          value={data.promedio}
-          onChange={(e) => onChange("promedio", e.target.value)}
-          placeholder="ej: 7.5"
-          className="max-w-32"
-        />
-      </div>
+      {/* 5. Participación en docencia/investigación */}
 
-      {/* 6. Participación en docencia/investigación */}
+  {/* 6. Influencia docente */}
       <div>
         <FieldLabel required>
-          6. Participación en docencia o investigación (ayudantías / proyectos)
+          5. Participación en docencia o investigación (ayudantías / proyectos)
         </FieldLabel>
         <div className="flex gap-6">
           {(["Sí", "No"] as SiNo[]).map((v) => (
@@ -639,9 +710,9 @@ function SectionAForm({
         )}
       </div>
 
-      {/* 7. Influencia docente */}
+  {/* 6. Influencia docente */}
       <div>
-        <FieldLabel required>7. Influencia docente</FieldLabel>
+        <FieldLabel required>6. Influencia docente</FieldLabel>
   <p className="text-sm text-neutral-600 mb-2">
           ¿Hubo algún/a docente, tutor/a o supervisor/a particularmente influyente?
         </p>
@@ -673,23 +744,50 @@ function SectionAForm({
         )}
       </div>
 
-      {/* 8. Contacto con pares */}
+  {/* 7. Contacto con pares */}
       <div>
-        <FieldLabel>8. Contacto con pares</FieldLabel>
-  <p className="text-sm text-neutral-600 mb-2">
+        <FieldLabel>7. Contacto con pares</FieldLabel>
+        <p className="text-sm text-neutral-600 mb-2">
           Piense en su círculo cercano de amigos/as de la facultad. Señale a qué enfoque pertenecen mayoritariamente.
         </p>
-        <TextArea
-          rows={3}
-          placeholder="Ej.: Psicoanálisis, Cognitivo, Sistémico, Humanista, etc."
-          value={data.contactoPares || ""}
-          onChange={(e) => onChange("contactoPares", e.target.value)}
-        />
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-6">
+            <Radio
+              name="contactoPares"
+              label="Psicoanálisis"
+              value="psicoanalisis"
+              checked={data.contactoParesOpcion === "psicoanalisis"}
+              onChange={(e) => onChange("contactoParesOpcion", e.target.value as any)}
+            />
+            <Radio
+              name="contactoPares"
+              label="Terapia Cognitivo-Conductual"
+              value="tcc"
+              checked={data.contactoParesOpcion === "tcc"}
+              onChange={(e) => onChange("contactoParesOpcion", e.target.value as any)}
+            />
+            <Radio
+              name="contactoPares"
+              label="Otro"
+              value="otro"
+              checked={data.contactoParesOpcion === "otro"}
+              onChange={(e) => onChange("contactoParesOpcion", e.target.value as any)}
+            />
+          </div>
+          {data.contactoParesOpcion === "otro" && (
+            <Input
+              placeholder="Especifique (opcional)"
+              value={data.contactoParesOtro || ""}
+              onChange={(e) => onChange("contactoParesOtro", e.target.value)}
+              className="max-w-sm"
+            />
+          )}
+        </div>
       </div>
 
-      {/* 9. Contacto previo con psicología */}
+  {/* 8. Contacto previo con psicología */}
       <div>
-        <FieldLabel required>9. Contacto previo con psicología antes de la carrera</FieldLabel>
+        <FieldLabel required>8. Contacto previo con psicología antes de la carrera</FieldLabel>
   <p className="text-sm text-neutral-600 mb-2">
           ¿Tuvo un contacto significativo (familiares, amigos/as, como paciente, influencers, etc.) que influyera en su visión inicial?
         </p>
@@ -716,9 +814,9 @@ function SectionAForm({
         )}
       </div>
 
-      {/* 10. Materias electivas */}
+  {/* 9. Materias electivas */}
       <div>
-        <FieldLabel required>10. Materias electivas</FieldLabel>
+        <FieldLabel required>9. Materias electivas</FieldLabel>
         <div className="flex gap-6">
           {(["Sí", "No"] as SiNo[]).map((v) => (
             <Radio
@@ -745,9 +843,9 @@ function SectionAForm({
 
   {/* (La pregunta original 11 sobre conocimiento general de enfoques fue eliminada) */}
 
-      {/* Adscripción teórica personal */}
+  {/* 10. Adscripción teórica personal */}
       <div>
-        <FieldLabel>11. Adscripción teórica personal</FieldLabel>
+  <FieldLabel>10. Adscripción teórica personal</FieldLabel>
         <p className="text-sm text-neutral-600 mb-2">¿Considera usted que adscribe a un determinado enfoque teórico?</p>
         <div className="flex gap-6">
           {(["Sí", "No"] as SiNo[]).map((v) => (
@@ -770,6 +868,36 @@ function SectionAForm({
                 onChange("adscripcionCual", e.target.value)
               }
             />
+            {data.adscripcionCual && data.adscripcionCual.trim() && (
+              <div className="mt-3">
+                <div className="text-sm mb-1">¿Qué tan probable es que cambie de posición?</div>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  {[1,2,3,4,5].map((n) => (
+                    <label key={n} className="inline-flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="adscripcionCambio"
+                        value={n}
+                        checked={data.adscripcionCambio === (n as any)}
+                        onChange={() => onChange("adscripcionCambio", n as any)}
+                        className="h-4 w-4"
+                      />
+                      {n === 1
+                        ? "Nada probable"
+                        : n === 2
+                        ? "Improbable"
+                        : n === 3
+                        ? "Ni probable ni improbable"
+                        : n === 4
+                        ? "Probable"
+                        : n === 5
+                        ? "Muy probable"
+                        : `Probabilidad ${n}`}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -823,7 +951,7 @@ function SectionTeoricos({
       }}
     >
       <header className="space-y-1">
-        <h2 className="text-xl font-semibold">Identificación y Afinidad con Enfoques Teóricos</h2>
+        <h2 className="text-xl font-semibold">Actitudes Hacia Enfoques Teóricos.</h2>
       </header>
 
       {/* Enfoques a evaluar */}
@@ -996,17 +1124,23 @@ function SectionContingencias({
     </select>
   );
 
-  const ValenciaRadios = ({
+  const ValenciaRadios5 = ({
     value,
     onChange,
     name,
   }: {
-    value?: "positivos" | "negativos" | "neutros";
-    onChange: (v: "positivos" | "negativos" | "neutros") => void;
+    value?: 1 | 2 | 3 | 4 | 5;
+    onChange: (v: 1 | 2 | 3 | 4 | 5) => void;
     name: string;
   }) => (
-    <div className="flex gap-4">
-      {(["positivos", "negativos", "neutros"] as const).map((v) => (
+    <div className="flex flex-wrap gap-4">
+      {([
+        { v: 5 as const, lbl: "muy positivos" },
+        { v: 4 as const, lbl: "positivos" },
+        { v: 3 as const, lbl: "neutros" },
+        { v: 2 as const, lbl: "negativos" },
+        { v: 1 as const, lbl: "muy negativos" },
+      ]).map(({ v, lbl }) => (
         <label key={v} className="inline-flex items-center gap-2 text-sm">
           <input
             type="radio"
@@ -1016,7 +1150,7 @@ function SectionContingencias({
             onChange={() => onChange(v)}
             className="h-4 w-4"
           />
-          {v}
+          {lbl}
         </label>
       ))}
     </div>
@@ -1035,7 +1169,7 @@ function SectionContingencias({
         <div className="rounded-md border border-neutral-200 bg-white p-3 text-sm text-neutral-800 space-y-2">
           <p><strong>Instrucciones:</strong> Para cada enfoque teórico, por favor, indica la frecuencia con la que has experimentado cada una de las siguientes situaciones. Usa la siguiente escala:</p>
           <p>(0=Nunca, 1=Una vez, 2=Dos veces, 3=Algunas veces (3-5), 4=Varias veces (6-10), 5=Frecuentemente (&gt;10), 6=Casi siempre)</p>
-          <p className="text-xs text-gray-600">Nota: el orden de las afirmaciones se presenta aleatorizado para reducir sesgos de orden.</p>
+          <p>Si alguno de estos eventos ocurrió (frecuencia &gt; 0), se te preguntará por el valor emocional que representó (muy positivos, positivos, neutros, negativos o muy negativos).</p>
         </div>
       </header>
 
@@ -1055,7 +1189,7 @@ function SectionContingencias({
                 id: "docentes",
                 title: "Contexto Académico - Docentes",
                 items: [
-                  { key: "docentePos", label: `Al hablar, preguntar o comentar, sobre el enfoque [X] en clase, la respuesta del docente fue de amigable y estimulante.` },
+                  { key: "docentePos", label: `Al hablar, preguntar o comentar, sobre el enfoque [X] en clase, la respuesta del docente fue amigable y estimulante.` },
                   { key: "docenteNeg", label: `Al hablar, preguntar o comentar, sobre el enfoque [X] en clase, la respuesta del docente fue de hostilidad o desinterés.` },
                   { key: "califAlta", label: `Recibí una calificación alta en un trabajo donde utilicé conceptos del enfoque [X].`, needsValence: true },
                   { key: "califBaja", label: `Recibí una calificación baja o una corrección negativa en un trabajo donde utilicé conceptos del enfoque [X].`, needsValence: true },
@@ -1077,10 +1211,10 @@ function SectionContingencias({
                 id: "contenido",
                 title: "Contexto Académico - Contenido Teórico",
                 items: [
-                  { key: "teoriaPos", label: `La exposición al contenido teórico sobre el enfoque [X] me generó sentimientos positivos, motivación o curiosidad.` },
-                  { key: "teoriaNeg", label: `La exposición al contenido teórico sobre el enfoque [X] me generó sentimientos negativos, frustración o desinterés.` },
-                  { key: "teoricoClaro", label: `Al estudiar los materiales teóricos relacionados con el enfoque [X], me resultaron claros, útiles o interesantes.` },
-                  { key: "teoricoConfuso", label: `Al estudiar los materiales teóricos relacionados con el enfoque [X], me resultaron confusos, poco útiles o aburridos.` },
+                  { key: "teoriaPos", label: `La exposición al contenido teórico sobre el enfoque [X] me generó motivación o curiosidad.` },
+                  { key: "teoriaNeg", label: `La exposición al contenido teórico sobre el enfoque [X] me generó frustración o desinterés.` },
+                  { key: "teoricoClaro", label: `Al estudiar los materiales teóricos relacionados con el enfoque [X], me resultaron útiles o interesantes.` },
+                  { key: "teoricoConfuso", label: `Al estudiar los materiales teóricos relacionados con el enfoque [X], me resultaron poco útiles o aburridos.` },
                 ],
               },
               {
@@ -1115,7 +1249,15 @@ function SectionContingencias({
               });
 
               // Mezcla por contexto utilizando semilla de sesión + contexto
-              const mixed = seededShuffle(entries, sessionSeed ^ hashToSeed(ctx.id));
+              let mixed = seededShuffle(entries, sessionSeed ^ hashToSeed(ctx.id));
+              // Evitar duplicados exactos en caso de que existan por error de combinación
+              const seen = new Set<string>();
+              mixed = mixed.filter((it) => {
+                const key = `${ctx.id}|${it.enfoqueIdx}|${String(it.key)}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+              });
 
               return (
                 <section key={ctx.id} className="border rounded-lg p-4 space-y-3 bg-white">
@@ -1125,6 +1267,30 @@ function SectionContingencias({
                       const c: Partial<ContItem> = data[it.enfoqueIdx] ?? ({} as Partial<ContItem>);
                       const short = it.enfoqueIdx === 0 ? "PSA" : "TCC";
                       const parts = (it.label || "").split("[X]");
+                      const valenceKeyMap: Record<NumericContKey, keyof ContItem> = {
+                        docentePos: "docentePosVal",
+                        docenteNeg: "docenteNegVal",
+                        califAlta: "califAltaVal",
+                        califBaja: "califBajaVal",
+                        obsDocentePos: "obsDocentePosVal",
+                        obsDocenteNeg: "obsDocenteNegVal",
+                        paresPos: "paresPosVal",
+                        paresNeg: "paresNegVal",
+                        obsParesPos: "obsParesPosVal",
+                        obsParesNeg: "obsParesNegVal",
+                        teoriaPos: "teoriaPosVal",
+                        teoriaNeg: "teoriaNegVal",
+                        teoricoClaro: "teoricoClaroVal",
+                        teoricoConfuso: "teoricoConfusoVal",
+                        clinicoPos: "clinicoPosVal",
+                        clinicoNeg: "clinicoNegVal",
+                        relatosPos: "relatosPosVal",
+                        relatosNeg: "relatosNegVal",
+                        familiaPos: "familiaPosVal",
+                        familiaNeg: "familiaNegVal",
+                      } as const;
+                      const vKey = valenceKeyMap[it.key as NumericContKey];
+                      const freqValue = (c[it.key as NumericContKey] as number | undefined) ?? undefined;
                       return (
                         <div key={`${ctx.id}-${it.enfoqueIdx}-${String(it.key)}`} className="flex flex-col gap-2">
                           <div className="text-sm">
@@ -1138,30 +1304,22 @@ function SectionContingencias({
                           <div className="flex flex-col gap-2">
                             <FrequencySelect
                               value={c[it.key] as number | undefined}
-                              onChange={(v) => onChange(it.enfoqueIdx, { [it.key]: v } as Partial<ContItem>)}
+                              onChange={(v) => {
+                                onChange(it.enfoqueIdx, { [it.key]: v } as Partial<ContItem>);
+                                if (v === 0 && vKey) {
+                                  onChange(it.enfoqueIdx, { [vKey]: undefined } as Partial<ContItem>);
+                                }
+                              }}
                               label="Seleccione"
                             />
-                            {it.needsValence && (
-                              <div className="text-xs text-gray-600">
-                                ¿Qué sentimientos le produjo esta situación? (positivos, negativos, neutros)
+                            {vKey && freqValue && freqValue > 0 && (
+                              <div className="text-xs text-gray-700">
+                                ¿Qué sentimientos o pensamientos le produjo esta situación?
                                 <div className="mt-1">
-                                  <ValenciaRadios
+                                  <ValenciaRadios5
                                     name={`val-${ctx.id}-${String(it.key)}-${it.enfoqueIdx}`}
-                                    value={
-                                      it.key === "califAlta"
-                                        ? c.califAltaValencia
-                                        : it.key === "califBaja"
-                                        ? c.califBajaValencia
-                                        : undefined
-                                    }
-                                    onChange={(v) =>
-                                      onChange(
-                                        it.enfoqueIdx,
-                                        it.key === "califAlta"
-                                          ? { califAltaValencia: v }
-                                          : { califBajaValencia: v }
-                                      )
-                                    }
+                                    value={c[vKey] as 1 | 2 | 3 | 4 | 5 | undefined}
+                                    onChange={(v) => onChange(it.enfoqueIdx, { [vKey]: v } as Partial<ContItem>)}
                                   />
                                 </div>
                               </div>
@@ -1197,20 +1355,24 @@ function SectionContingencias({
 function SectionActividades({
   data,
   onChange,
+  onToggleNone,
+  onChangeOtroLabel,
   onBack,
   onSubmit,
 }: {
-  data: { teorico: [number, number, number]; formacion: [number, number, number]; redes: [number, number, number] };
+  data: { teorico: [number, number, number]; formacion: [number, number, number]; redes: [number, number, number]; noTeorico?: boolean; noFormacion?: boolean; noRedes?: boolean; otroLabel?: string };
   onChange: (cat: "teorico" | "formacion" | "redes", idx: 0 | 1 | 2, value: number) => void;
+  onToggleNone: (cat: "teorico" | "formacion" | "redes", none: boolean) => void;
+  onChangeOtroLabel: (label: string) => void;
   onBack: () => void;
   onSubmit: () => void;
 }) {
-  const names: [string, string, string] = ["PSA", "TCC", "OTRO"];
+  const names: [string, string, string] = ["PSA", "TCC", data.otroLabel?.trim() ? data.otroLabel.trim().toUpperCase() : "OTRO"];
 
   const sum = (triple: [number, number, number]) => (triple?.[0] || 0) + (triple?.[1] || 0) + (triple?.[2] || 0);
-  const okRow = (triple: [number, number, number]) => sum(triple) === 100;
+  const okRow = (triple: [number, number, number], none?: boolean) => (none ? true : sum(triple) === 100);
 
-  const canSubmit = okRow(data.teorico) && okRow(data.formacion) && okRow(data.redes);
+  const canSubmit = okRow(data.teorico, data.noTeorico) && okRow(data.formacion, data.noFormacion) && okRow(data.redes, data.noRedes);
 
   const Row = ({
     title,
@@ -1226,6 +1388,17 @@ function SectionActividades({
     <section className="border rounded-lg p-4 bg-white space-y-3">
       <h3 className="font-medium">{title}</h3>
       <p className="text-sm text-neutral-600">{hint}</p>
+      <div className="flex items-center gap-4 text-sm">
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-4 w-4"
+            checked={cat === 'teorico' ? !!data.noTeorico : cat === 'formacion' ? !!data.noFormacion : !!data.noRedes}
+            onChange={(e) => onToggleNone(cat, e.target.checked)}
+          />
+          {cat === 'formacion' ? 'No participo' : 'No consumo'}
+        </label>
+      </div>
       <div className="hidden sm:grid sm:grid-cols-4 text-xs text-neutral-500">
         <div>Enfoque</div>
         <div className="sm:col-span-3 sm:text-right">Porcentaje de tiempo dedicado</div>
@@ -1241,6 +1414,7 @@ function SectionActividades({
                 max={100}
                 value={triple?.[i] ?? 0}
                 onChange={(e) => onChange(cat, i as 0 | 1 | 2, Number(e.target.value))}
+                disabled={cat === 'teorico' ? !!data.noTeorico : cat === 'formacion' ? !!data.noFormacion : !!data.noRedes}
                 className="max-w-28"
                 placeholder="0"
               />
@@ -1250,8 +1424,8 @@ function SectionActividades({
         ))}
         <div className="flex items-center justify-between pt-1 border-t mt-2">
           <div className="text-sm text-neutral-700">Total</div>
-          <div className={`text-sm ${okRow(triple) ? "text-neutral-900" : "text-red-600"}`}>
-            {sum(triple)} % {okRow(triple) ? "" : "(debe sumar 100%)"}
+          <div className={`text-sm ${okRow(triple, cat === 'teorico' ? data.noTeorico : cat === 'formacion' ? data.noFormacion : data.noRedes) ? "text-neutral-900" : "text-red-600"}`}>
+            {sum(triple)} % {okRow(triple, cat === 'teorico' ? data.noTeorico : cat === 'formacion' ? data.noFormacion : data.noRedes) ? "" : "(debe sumar 100%)"}
           </div>
         </div>
       </div>
@@ -1269,13 +1443,12 @@ function SectionActividades({
       <header className="space-y-2">
         <h2 className="text-xl font-semibold">Distribución de Tiempo y Dedicación</h2>
         <p className="text-sm text-neutral-600">
-          Instrucciones: Piense en el tiempo total que dedica a las siguientes actividades. Distribuya el 100% de su
-          tiempo y esfuerzo entre los enfoques para cada categoría. La suma de cada fila debe dar 100%.
+          Instrucciones: Esta sección se refiere exclusivamente a actividades NO OBLIGATORIAS de la facultad; es decir, actividades que realiza por propia voluntad o preferencia. Para cada categoría, distribuya el 100% entre los enfoques. Si no consume/participa, marque la casilla correspondiente.
         </p>
       </header>
 
       <Row
-        title="Consumo de Material Teórico (no obligatorio)"
+        title="Consumo de Material Teórico"
         hint="(Lectura de libros/artículos, ver videos, escuchar podcasts, etc.)"
         cat="teorico"
         triple={data.teorico}
@@ -1294,6 +1467,18 @@ function SectionActividades({
         cat="redes"
         triple={data.redes}
       />
+
+      {(((data.teorico?.[2] || 0) > 0) || ((data.formacion?.[2] || 0) > 0) || ((data.redes?.[2] || 0) > 0)) && (
+        <div className="mt-1 flex items-center gap-2">
+          <span className="text-sm">Etiqueta para "OTRO":</span>
+          <Input
+            placeholder="Especifique (opcional)"
+            value={data.otroLabel || ""}
+            onChange={(e) => onChangeOtroLabel(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+      )}
 
       <div className="flex items-center justify-between pt-2">
         <button type="button" className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50" onClick={onBack}>
