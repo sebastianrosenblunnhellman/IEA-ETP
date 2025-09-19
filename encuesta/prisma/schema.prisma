@@ -27,6 +27,12 @@ model SurveyResponse {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Consentimiento informado (explícito en la UI)
+  consent   Boolean?
+
+  /// Copia del payload crudo para trazabilidad y compatibilidad futura
+  raw_payload Json?
+
   // ------------------ Sección A (Sociodemográfico y Académico) ------------------
   edad                      Int?
   genero                    String?

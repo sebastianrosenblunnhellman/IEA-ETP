@@ -173,6 +173,7 @@ export default function Home() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          consent: state.consent,
           sectionA: state.sectionA,
           teoricos: state.teoricos,
           contingencias: state.contingencias,

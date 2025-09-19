@@ -103,7 +103,7 @@ function toBool(v: unknown): boolean | null {
 
 export async function POST(req: Request) {
   try {
-  const body: Payload = await req.json();
+  const body: Payload & { consent?: boolean } = await req.json();
 
     const a = body.sectionA ?? {};
     const enfoques = body.teoricos?.enfoques ?? [];
@@ -111,6 +111,8 @@ export async function POST(req: Request) {
     const act = body.actividades ?? {};
 
   const data: Record<string, unknown> = {
+    consent: typeof body.consent === 'boolean' ? body.consent : null,
+    raw_payload: body ?? null,
       // A
       edad: a.edad ? Number(a.edad) : null,
       genero: a.genero || null,
