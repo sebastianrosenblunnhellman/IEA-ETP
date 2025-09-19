@@ -1527,15 +1527,6 @@ function ThankYou() {
   );
 }
 
-function RowLabel({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="text-sm">{label}</div>
-      {children}
-    </div>
-  );
-}
-
 // — Utilidades para aleatorización determinística —
 function hashToSeed(str: string): number {
   let h = 2166136261 >>> 0; // FNV-1a base
@@ -1563,22 +1554,6 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
-}
-
-function ProximaSeccion({ onBack }: { onBack: () => void }) {
-  return (
-    <div className="space-y-4">
-      <p className="text-lg font-medium">Próxima sección (en construcción)</p>
-      <div className="flex justify-between">
-        <button className="rounded-md border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50" onClick={onBack}>
-          Volver a Sección A
-        </button>
-        <button className="rounded-md bg-neutral-900 text-white px-4 py-2 text-sm" disabled>
-          Continuar
-        </button>
-      </div>
-    </div>
-  );
 }
 
 // Simple card wrapper for consistent spacing and clarity

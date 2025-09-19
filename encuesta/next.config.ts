@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Align with Turbopack root to avoid Vercel warning
+  outputFileTracingRoot: __dirname,
 };
 
 export default nextConfig;
