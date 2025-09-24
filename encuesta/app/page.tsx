@@ -342,7 +342,7 @@ export default function Home() {
       const c = state.contingencias.porEnfoque[i] || {};
       for (const k of numericKeys) {
         const v = c[k as keyof ContItem] as unknown as number | undefined;
-        if (typeof v !== "number" || v < 0 || v > 6) return false;
+        if (typeof v !== "number" || v < 0 || v > 4) return false;
         // Si la frecuencia es > 0, exigir valencia 1..5
         if (v > 0) {
           const vk = valenceKeyMap[k];
@@ -1131,19 +1131,17 @@ function SectionContingencias({
   }) => (
     <select
       className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-      value={value ?? ""}
+      value={typeof value === "number" ? Math.max(0, Math.min(4, value)) : ""}
       onChange={(e) => onChange(Number(e.target.value))}
     >
       <option value="" disabled>
         {label || "Seleccione"}
       </option>
-      <option value={0}>0 Nunca</option>
-      <option value={1}>1 Una vez</option>
-      <option value={2}>2 Dos veces</option>
-      <option value={3}>3 Algunas veces (3-5)</option>
-      <option value={4}>4 Varias veces (6-10)</option>
-      <option value={5}>5 Frecuentemente (&gt;10)</option>
-      <option value={6}>6 Casi siempre</option>
+      <option value={0}>0 Nunca: no me pasó.</option>
+      <option value={1}>1 Raramente / Alguna vez: me pasó en muy pocas ocasiones, de forma aislada.</option>
+      <option value={2}>2 A veces: me pasa de vez en cuando, pero no es lo más común.</option>
+      <option value={3}>3 Frecuentemente: me pasa seguido, con bastante regularidad.</option>
+      <option value={4}>4 Casi siempre: me pasa la gran mayoría de las veces.</option>
     </select>
   );
 
@@ -1190,9 +1188,15 @@ function SectionContingencias({
       <header className="space-y-3">
         <h2 className="text-xl font-semibold">Aprendizaje en Contextos Específicos</h2>
         <div className="rounded-md border border-neutral-200 bg-white p-3 text-sm text-neutral-800 space-y-2">
-          <p><strong>Instrucciones:</strong> Para cada enfoque teórico, por favor, indica la frecuencia con la que has experimentado cada una de las siguientes situaciones. Usa la siguiente escala:</p>
-          <p>(0=Nunca, 1=Una vez, 2=Dos veces, 3=Algunas veces (3-5), 4=Varias veces (6-10), 5=Frecuentemente (&gt;10), 6=Casi siempre)</p>
-          <p>Si alguno de estos eventos ocurrió (frecuencia &gt; 0), se te preguntará por el valor emocional que representó (muy positivos, positivos, neutros, negativos o muy negativos).</p>
+          <p><strong>Instrucciones:</strong> Para cada enfoque teórico, por favor, indica la frecuencia con la que has experimentado cada una de las siguientes situaciones. Usa la siguiente escala de ocurrencia:</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li><strong>0 — Nunca:</strong> no me pasó.</li>
+            <li><strong>1 — Raramente / Alguna vez:</strong> me pasó en muy pocas ocasiones, de forma aislada.</li>
+            <li><strong>2 — A veces:</strong> me pasa de vez en cuando, pero no es lo más común.</li>
+            <li><strong>3 — Frecuentemente:</strong> me pasa seguido, con bastante regularidad.</li>
+            <li><strong>4 — Casi siempre:</strong> me pasa la gran mayoría de las veces.</li>
+          </ul>
+          <p>Si alguno de estos eventos ocurrió (frecuencia &gt; 0), se te preguntará por el <em>valor emocional</em> que representó (muy positivos, positivos, neutros, negativos o muy negativos).</p>
         </div>
       </header>
 

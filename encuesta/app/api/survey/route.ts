@@ -101,6 +101,15 @@ function toBool(v: unknown): boolean | null {
   return null;
 }
 
+// Clamp frequency to new 0..4 scale (legacy 5/6 -> 4)
+function clampFreq04(v: unknown): number | null {
+  const n = Number(v as number);
+  if (!Number.isFinite(n)) return null;
+  if (n <= 0) return 0;
+  if (n >= 4) return 4; // also maps legacy 5/6 to 4
+  return Math.max(0, Math.min(4, Math.round(n)));
+}
+
 export async function POST(req: Request) {
   try {
   const body: Payload & { consent?: boolean } = await req.json();
@@ -149,49 +158,49 @@ export async function POST(req: Request) {
     // Contingencias helper para copiar campos
   const copyCont = (prefix: 'psa' | 'tcc', c?: ContItem) => {
       if (!c) return;
-      data[`${prefix}_docentePos_frequency`] = c.docentePos ?? null;
+      data[`${prefix}_docentePos_frequency`] = clampFreq04(c.docentePos);
       data[`${prefix}_docentePos_valence`] = c.docentePosVal ?? null;
-      data[`${prefix}_docenteNeg_frequency`] = c.docenteNeg ?? null;
+      data[`${prefix}_docenteNeg_frequency`] = clampFreq04(c.docenteNeg);
       data[`${prefix}_docenteNeg_valence`] = c.docenteNegVal ?? null;
-      data[`${prefix}_califAlta_frequency`] = c.califAlta ?? null;
+      data[`${prefix}_califAlta_frequency`] = clampFreq04(c.califAlta);
       data[`${prefix}_califAlta_valence`] = c.califAltaVal ?? null;
-      data[`${prefix}_califBaja_frequency`] = c.califBaja ?? null;
+      data[`${prefix}_califBaja_frequency`] = clampFreq04(c.califBaja);
       data[`${prefix}_califBaja_valence`] = c.califBajaVal ?? null;
-      data[`${prefix}_obsDocentePos_frequency`] = c.obsDocentePos ?? null;
+      data[`${prefix}_obsDocentePos_frequency`] = clampFreq04(c.obsDocentePos);
       data[`${prefix}_obsDocentePos_valence`] = c.obsDocentePosVal ?? null;
-      data[`${prefix}_obsDocenteNeg_frequency`] = c.obsDocenteNeg ?? null;
+      data[`${prefix}_obsDocenteNeg_frequency`] = clampFreq04(c.obsDocenteNeg);
       data[`${prefix}_obsDocenteNeg_valence`] = c.obsDocenteNegVal ?? null;
 
-      data[`${prefix}_paresPos_frequency`] = c.paresPos ?? null;
+      data[`${prefix}_paresPos_frequency`] = clampFreq04(c.paresPos);
       data[`${prefix}_paresPos_valence`] = c.paresPosVal ?? null;
-      data[`${prefix}_paresNeg_frequency`] = c.paresNeg ?? null;
+      data[`${prefix}_paresNeg_frequency`] = clampFreq04(c.paresNeg);
       data[`${prefix}_paresNeg_valence`] = c.paresNegVal ?? null;
-      data[`${prefix}_obsParesPos_frequency`] = c.obsParesPos ?? null;
+      data[`${prefix}_obsParesPos_frequency`] = clampFreq04(c.obsParesPos);
       data[`${prefix}_obsParesPos_valence`] = c.obsParesPosVal ?? null;
-      data[`${prefix}_obsParesNeg_frequency`] = c.obsParesNeg ?? null;
+      data[`${prefix}_obsParesNeg_frequency`] = clampFreq04(c.obsParesNeg);
       data[`${prefix}_obsParesNeg_valence`] = c.obsParesNegVal ?? null;
 
-      data[`${prefix}_teoriaPos_frequency`] = c.teoriaPos ?? null;
+      data[`${prefix}_teoriaPos_frequency`] = clampFreq04(c.teoriaPos);
       data[`${prefix}_teoriaPos_valence`] = c.teoriaPosVal ?? null;
-      data[`${prefix}_teoriaNeg_frequency`] = c.teoriaNeg ?? null;
+      data[`${prefix}_teoriaNeg_frequency`] = clampFreq04(c.teoriaNeg);
       data[`${prefix}_teoriaNeg_valence`] = c.teoriaNegVal ?? null;
-      data[`${prefix}_teoricoClaro_frequency`] = c.teoricoClaro ?? null;
+      data[`${prefix}_teoricoClaro_frequency`] = clampFreq04(c.teoricoClaro);
       data[`${prefix}_teoricoClaro_valence`] = c.teoricoClaroVal ?? null;
-      data[`${prefix}_teoricoConfuso_frequency`] = c.teoricoConfuso ?? null;
+      data[`${prefix}_teoricoConfuso_frequency`] = clampFreq04(c.teoricoConfuso);
       data[`${prefix}_teoricoConfuso_valence`] = c.teoricoConfusoVal ?? null;
 
-      data[`${prefix}_clinicoPos_frequency`] = c.clinicoPos ?? null;
+      data[`${prefix}_clinicoPos_frequency`] = clampFreq04(c.clinicoPos);
       data[`${prefix}_clinicoPos_valence`] = c.clinicoPosVal ?? null;
-      data[`${prefix}_clinicoNeg_frequency`] = c.clinicoNeg ?? null;
+      data[`${prefix}_clinicoNeg_frequency`] = clampFreq04(c.clinicoNeg);
       data[`${prefix}_clinicoNeg_valence`] = c.clinicoNegVal ?? null;
-      data[`${prefix}_relatosPos_frequency`] = c.relatosPos ?? null;
+      data[`${prefix}_relatosPos_frequency`] = clampFreq04(c.relatosPos);
       data[`${prefix}_relatosPos_valence`] = c.relatosPosVal ?? null;
-      data[`${prefix}_relatosNeg_frequency`] = c.relatosNeg ?? null;
+      data[`${prefix}_relatosNeg_frequency`] = clampFreq04(c.relatosNeg);
       data[`${prefix}_relatosNeg_valence`] = c.relatosNegVal ?? null;
 
-      data[`${prefix}_familiaPos_frequency`] = c.familiaPos ?? null;
+      data[`${prefix}_familiaPos_frequency`] = clampFreq04(c.familiaPos);
       data[`${prefix}_familiaPos_valence`] = c.familiaPosVal ?? null;
-      data[`${prefix}_familiaNeg_frequency`] = c.familiaNeg ?? null;
+      data[`${prefix}_familiaNeg_frequency`] = clampFreq04(c.familiaNeg);
       data[`${prefix}_familiaNeg_valence`] = c.familiaNegVal ?? null;
     };
 

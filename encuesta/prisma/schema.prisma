@@ -60,7 +60,7 @@ model SurveyResponse {
   tcc_preferencia           Int?
   tcc_conocimiento          Int?
 
-  // ------------------ Sección Contingencias (frecuencias 0..6) ------------------
+  // ------------------ Sección Contingencias (frecuencias 0..4) ------------------
   // Docentes
   psa_docentePos_frequency  Int?
   psa_docenteNeg_frequency  Int?
