@@ -498,8 +498,11 @@ function Intro({ onNext, consent, onConsentChange }: { onNext: () => void; conse
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900">HISTORIA DE APRENDIZAJE COMO PREDICTOR DE LAS ACTITUDES HACIA LOS ENFOQUES TEÓRICOS EN PSICOLOGÍA</h1>
-        <p className="text-sm text-neutral-600">Sebastian Rosenblunn Helman, Universidad de Buenos Aires</p>
+      <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900">HISTORIA DE APRENDIZAJE COMO PREDICTOR DE LAS ACTITUDES HACIA LOS ENFOQUES TEÓRICOS EN PSICOLOGÍA</h1>
+      <p className="text-sm text-neutral-600">
+        Sebastian Rosenblunn Helman, Universidad de Buenos Aires<br />
+        Thomas Balaceda, Universidad de Buenos Aires
+      </p>
       </header>
 
       <section className="bg-white rounded-lg p-4 sm:p-5 border border-neutral-200 space-y-2">
