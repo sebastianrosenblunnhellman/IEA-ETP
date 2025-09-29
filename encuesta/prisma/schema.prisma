@@ -53,6 +53,14 @@ model SurveyResponse {
   adscripcion_teorica_occurrence    Boolean?
   adscripcion_teorica_cual          String?
   adscripcion_teorica_cambio        Int?
+  
+  // Interés / proyección profesional temprana
+  /// ¿Ya tiene en mente un área de la psicología a la que le gustaría dedicarse? (dicotómica)
+  proyeccion_area_occurrence       Boolean?
+  /// Lista separada por comas de áreas seleccionadas (p.ej. "Investigación,Clínica"). Se permite múltiples.
+  proyeccion_area_lista            String?
+  /// Texto libre cuando se selecciona "Otro(s)"
+  proyeccion_area_otro             String?
 
   // ------------------ Sección Teóricos (PSA/TCC) ------------------
   psa_preferencia           Int?
@@ -172,6 +180,10 @@ model SurveyResponse {
   no_formacion              Boolean?
   no_redes                  Boolean?
   otro_label                String?
+
+  // ------------------ Feedback libre final ------------------
+  /// Comentario libre final sobre el cuestionario / temática
+  feedback_final            String?
 
 }
   // ------------------ Cómo nombrar columnas del cuestionario ------------------

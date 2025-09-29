@@ -22,6 +22,10 @@ type SectionA = {
   adscripcionTeorica?: boolean | string | number;
   adscripcionCual?: string;
   adscripcionCambio?: number | string;
+  // Nuevos campos proyección profesional temprana
+  proyeccionArea?: boolean | string | number; // dicotómica
+  proyeccionAreaLista?: string; // lista separada por comas de etiquetas elegidas
+  proyeccionAreaOtro?: string; // texto libre adicional
 };
 
 type Enfoque = {
@@ -88,6 +92,7 @@ type Payload = {
   teoricos?: { enfoques?: Enfoque[] };
   contingencias?: { porEnfoque?: ContItem[] };
   actividades?: Actividades;
+  feedbackFinal?: string;
 };
 
 function toBool(v: unknown): boolean | null {
@@ -143,6 +148,12 @@ export async function POST(req: Request) {
       adscripcion_teorica_occurrence: toBool(a.adscripcionTeorica),
   adscripcion_teorica_cual: a.adscripcionCual || null,
   adscripcion_teorica_cambio: a.adscripcionCambio ? Number(a.adscripcionCambio) : null,
+    // Proyección profesional temprana
+    proyeccion_area_occurrence: toBool(a.proyeccionArea),
+    proyeccion_area_lista: a.proyeccionAreaLista || null,
+    proyeccion_area_otro: a.proyeccionAreaOtro || null,
+    // Feedback final
+    feedback_final: typeof body.feedbackFinal === 'string' && body.feedbackFinal.trim() ? body.feedbackFinal.trim() : null,
     };
 
     // Teóricos: asumimos index 0=PSA, 1=TCC

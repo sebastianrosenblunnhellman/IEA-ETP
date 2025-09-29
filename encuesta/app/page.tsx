@@ -39,6 +39,10 @@ type SectionA = {
   adscripcionTeorica?: SiNo;
   adscripcionCual?: string;
   adscripcionCambio?: 1 | 2 | 3 | 4 | 5;
+  // Proyección profesional temprana
+  proyeccionArea?: SiNo;
+  proyeccionAreaLista?: string[]; // selección múltiple
+  proyeccionAreaOtro?: string; // texto libre para otros
 };
 
 type ContItem = {
@@ -128,6 +132,7 @@ interface SurveyState {
     noRedes: boolean;
     otroLabel: string;
   };
+  feedbackFinal: string;
 }
 
 type DeepPartial<T> = {
@@ -155,6 +160,9 @@ const emptyA: SectionA = {
   adscripcionTeorica: "",
   adscripcionCual: "",
   adscripcionCambio: undefined,
+  proyeccionArea: "",
+  proyeccionAreaLista: [],
+  proyeccionAreaOtro: "",
 };
 
 export default function Home() {
@@ -178,6 +186,7 @@ export default function Home() {
     noRedes: false,
     otroLabel: ""
   },
+  feedbackFinal: "",
   });
 
   // (Handlers de actividades previos removidos; ahora se usan números directamente)
@@ -190,7 +199,12 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           consent: state.consent,
-          sectionA: state.sectionA,
+          sectionA: {
+            ...state.sectionA,
+            proyeccionAreaLista: Array.isArray(state.sectionA.proyeccionAreaLista) && state.sectionA.proyeccionAreaLista.length
+              ? state.sectionA.proyeccionAreaLista.join(',')
+              : undefined,
+          },
           teoricos: state.teoricos,
           contingencias: state.contingencias,
           // Convert string percentages to numbers just before send (optional)
@@ -200,11 +214,12 @@ export default function Home() {
             formacion: state.actividades.formacion.map(v => Number(v)),
             redes: state.actividades.redes.map(v => Number(v)),
           },
+            feedbackFinal: state.feedbackFinal,
         }),
       });
       if (!res.ok) throw new Error('Error al guardar');
       const json = await res.json();
-      if (json?.ok) setState((s) => ({ ...s, step: 5 }));
+        if (json?.ok) setState((s) => ({ ...s, step: 6 }));
     } catch (e) {
       console.error('submitSurvey error', e);
       alert('Hubo un problema al enviar la encuesta. Intente nuevamente.');
@@ -259,6 +274,7 @@ export default function Home() {
             noRedes: Boolean(storedActividades?.noRedes),
             otroLabel: typeof storedActividades?.otroLabel === "string" ? storedActividades.otroLabel : "",
           },
+          feedbackFinal: typeof parsed.feedbackFinal === 'string' ? parsed.feedbackFinal : "",
         }));
       }
     } catch {
@@ -307,6 +323,7 @@ export default function Home() {
     if (a.contactoPrevio === "Sí" && !a.contactoPrevioEnfoque) return false;
     if (a.materiasElectivas === "Sí" && !a.materiasElectivasDetalle) return false;
   if (a.adscripcionTeorica === "Sí" && !(a.adscripcionCual && a.adscripcionCual.trim())) return false;
+    if (a.proyeccionArea === "Sí" && (!a.proyeccionAreaLista || a.proyeccionAreaLista.length === 0) && !a.proyeccionAreaOtro) return false;
     return true;
   }, [state.sectionA]);
 
@@ -396,6 +413,7 @@ export default function Home() {
     "Actitudes",
     "Aprendizaje",
     "Actividades",
+    "Comentario final",
   ];
 
   return (
@@ -449,7 +467,7 @@ export default function Home() {
                 canContinue={canContinueContingencias}
               />
             </Card>
-          ) : (
+          ) : state.step === 4 ? (
             <Card>
               {state.step === 4 ? (
                 <SectionActividades
@@ -500,11 +518,22 @@ export default function Home() {
                     setState((s) => ({ ...s, actividades: { ...s.actividades, otroLabel: label } }))
                   }
                   onBack={back}
-                  onSubmit={submitSurvey}
+                  onSubmit={() => setState((s) => ({ ...s, step: 5 }))}
                 />
-              ) : (
-                <ThankYou />
-              )}
+              ) : null}
+            </Card>
+          ) : state.step === 5 ? (
+            <Card>
+              <FeedbackFinal
+                value={state.feedbackFinal}
+                onChange={(v) => setState((s) => ({ ...s, feedbackFinal: v }))}
+                onBack={back}
+                onSubmit={submitSurvey}
+              />
+            </Card>
+          ) : (
+            <Card>
+              <ThankYou />
             </Card>
           )}
         </div>
@@ -671,6 +700,9 @@ function SectionAForm({
     adscripcionCual:
       data.adscripcionTeorica === "Sí" &&
       !(data.adscripcionCual && data.adscripcionCual.trim()),
+    proyeccionArea: !data.proyeccionArea,
+    proyeccionAreaLista:
+      data.proyeccionArea === "Sí" && (!data.proyeccionAreaLista || data.proyeccionAreaLista.length === 0) && !data.proyeccionAreaOtro,
   };
 
   return (
@@ -1016,6 +1048,64 @@ function SectionAForm({
                   ))}
                 </div>
               </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 11. Proyección / área de interés futura */}
+      <div>
+        <FieldLabel required>11. ¿Ya tiene pensada un área de la psicología en la que le gustaría desarrollarse profesionalmente?</FieldLabel>
+        <div className={`flex gap-6 ${showErrors && err.proyeccionArea ? "border border-red-500 rounded-md p-2" : ""}`}>
+          {(["Sí", "No"] as SiNo[]).map((v) => (
+            <Radio
+              key={v}
+              name="proyeccionArea"
+              label={v}
+              value={v}
+              checked={data.proyeccionArea === v}
+              onChange={(e) => onChange("proyeccionArea", e.target.value as SiNo)}
+            />
+          ))}
+        </div>
+        {showErrors && err.proyeccionArea && <p className="text-xs text-red-600 mt-1">Seleccione una opción</p>}
+        {data.proyeccionArea === "Sí" && (
+          <div className="mt-3 space-y-3">
+            <p className="text-sm text-neutral-600">Puede marcar una o varias opciones.</p>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 text-sm">
+              {[
+                { key: "Investigación", label: "Investigación académica" },
+                { key: "Clínica", label: "Clínica / Psicoterapia" },
+              ].map(op => {
+                const active = (data.proyeccionAreaLista || []).includes(op.key);
+                return (
+                  <button
+                    key={op.key}
+                    type="button"
+                    onClick={() => {
+                      const list = new Set(data.proyeccionAreaLista || []);
+                      if (list.has(op.key)) list.delete(op.key); else list.add(op.key);
+                      onChange("proyeccionAreaLista", Array.from(list));
+                    }}
+                    className={`px-3 py-1 rounded-full border text-xs font-medium transition ${active ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white hover:bg-neutral-50 border-neutral-300'}`}
+                  >
+                    {op.label}
+                  </button>
+                );
+              })}
+              {/* Botón Otro */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs">Otros:</span>
+                <Input
+                  placeholder="Especifique (opcional)"
+                  value={data.proyeccionAreaOtro || ''}
+                  onChange={(e) => onChange('proyeccionAreaOtro', e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
+            </div>
+            {showErrors && err.proyeccionAreaLista && (
+              <p className="text-xs text-red-600">Seleccione al menos una opción o complete Otros</p>
             )}
           </div>
         )}
@@ -1729,7 +1819,7 @@ function SectionActividades({
           disabled={!canSubmit}
           className="rounded-md bg-neutral-900 px-4 py-2 text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-800"
         >
-          Enviar Encuesta
+          Siguiente
         </button>
       </div>
 
@@ -1779,6 +1869,38 @@ function ThankYou() {
     <div className="space-y-4 text-center">
       <p className="text-xl font-semibold">¡Muchas gracias por su valiosa colaboración!</p>
     </div>
+  );
+}
+
+function FeedbackFinal({ value, onChange, onBack, onSubmit }: { value: string; onChange: (v: string) => void; onBack: () => void; onSubmit: () => void }) {
+  return (
+    <form
+      className="space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
+    >
+      <header className="space-y-2">
+        <h2 className="text-xl font-semibold">Comentario final (opcional)</h2>
+        <p className="text-sm text-neutral-600">Si desea, puede dejarnos cualquier comentario adicional sobre el cuestionario o la temática tratada.</p>
+      </header>
+      <TextArea
+        rows={5}
+        placeholder="Escriba aquí (opcional)"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="resize-y"
+      />
+      <div className="flex items-center justify-between pt-2">
+        <button type="button" className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50" onClick={onBack}>
+          Anterior
+        </button>
+        <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-sm text-white hover:bg-neutral-800">
+          Enviar Encuesta
+        </button>
+      </div>
+    </form>
   );
 }
 
