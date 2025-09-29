@@ -1,5 +1,5 @@
 /** Tailwind CSS v4 config (minimal). Ajusta safelist si luego agregas clases dinámicas. */
-export default {
+const config = {
   darkMode: 'class',
   safelist: [
     'text-white',
@@ -9,3 +9,5 @@ export default {
     'border-neutral-300',
   ],
 };
+
+export default config;

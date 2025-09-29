@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback, ChangeEvent } from "react";
+import React, { useEffect, useMemo, useState, ChangeEvent } from "react";
 
 type Genero = "Femenino" | "Masculino" | "Otro" | "";
 
@@ -116,9 +116,9 @@ interface Enfoque {
 interface SurveyState {
   step: number;
   consent: boolean;
-  sectionA: any;
+  sectionA: SectionA;
   teoricos: { enfoques: Enfoque[] };
-  contingencias: { porEnfoque: Record<string, any>[] };
+  contingencias: { porEnfoque: Array<Partial<ContItem>> };
   actividades: {
     teorico: [number, number, number];
     formacion: [number, number, number];
@@ -129,6 +129,16 @@ interface SurveyState {
     otroLabel: string;
   };
 }
+
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends (infer U)[]
+    ? Array<DeepPartial<U>>
+    : T[K] extends object
+    ? DeepPartial<T[K]>
+    : T[K];
+};
+
+type PersistedSurveyState = DeepPartial<SurveyState>;
 
 const emptyA: SectionA = {
   edad: "",
@@ -206,39 +216,48 @@ export default function Home() {
     try {
       const raw = localStorage.getItem("encuesta-psico-state");
       if (raw) {
-        const parsed = JSON.parse(raw) as SurveyState;
+        const parsed = JSON.parse(raw) as PersistedSurveyState;
+        const storedEnfoques = parsed.teoricos?.enfoques ?? [];
+        const storedContingencias = parsed.contingencias?.porEnfoque;
+        const storedActividades = parsed.actividades;
         setState((prev) => ({
           step: parsed.step ?? 0,
           consent: Boolean(parsed.consent),
-          sectionA: { ...emptyA, ...(parsed.sectionA || {}) },
+          sectionA: { ...emptyA, ...(parsed.sectionA ?? {}) },
           teoricos: {
             enfoques: [
               {
                 nombre: "Psicoanálisis (Freudiano, Lacaniano y otros)",
-                preferencia: toNumInRange((parsed.teoricos as any)?.enfoques?.[0]?.preferencia, -3, 3),
-                conocimiento: toNumInRange((parsed.teoricos as any)?.enfoques?.[0]?.conocimiento, 1, 5),
+                preferencia: toNumInRange(storedEnfoques[0]?.preferencia, -3, 3),
+                conocimiento: toNumInRange(storedEnfoques[0]?.conocimiento, 1, 5),
               },
               {
-        nombre: "Terapia Cognitivo Conductual (conductual, cognitivo o contextual)",
-                preferencia: toNumInRange((parsed.teoricos as any)?.enfoques?.[1]?.preferencia, -3, 3),
-                conocimiento: toNumInRange((parsed.teoricos as any)?.enfoques?.[1]?.conocimiento, 1, 5),
+                nombre: "Terapia Cognitivo Conductual (conductual, cognitivo o contextual)",
+                preferencia: toNumInRange(storedEnfoques[1]?.preferencia, -3, 3),
+                conocimiento: toNumInRange(storedEnfoques[1]?.conocimiento, 1, 5),
               },
             ],
           },
           contingencias: {
             porEnfoque:
-              parsed.contingencias?.porEnfoque?.length
-                ? [...Array(2)].map((_, i) => parsed.contingencias!.porEnfoque[i] || {})
+              storedContingencias && storedContingencias.length
+                ? Array.from({ length: 2 }, (_, i) => {
+                    const stored = storedContingencias[i];
+                    if (stored && typeof stored === "object") {
+                      return { ...stored };
+                    }
+                    return prev.contingencias.porEnfoque[i] ?? {};
+                  })
                 : prev.contingencias.porEnfoque,
           },
           actividades: {
-            teorico: normalizeTriple(parsed.actividades?.teorico, [0,0,0]),
-            formacion: normalizeTriple(parsed.actividades?.formacion, [0,0,0]),
-            redes: normalizeTriple(parsed.actividades?.redes, [0,0,0]),
-            noTeorico: Boolean(parsed.actividades?.noTeorico),
-            noFormacion: Boolean(parsed.actividades?.noFormacion),
-            noRedes: Boolean(parsed.actividades?.noRedes),
-            otroLabel: (parsed.actividades?.otroLabel as any) || "",
+            teorico: normalizeTriple(storedActividades?.teorico, [0,0,0]),
+            formacion: normalizeTriple(storedActividades?.formacion, [0,0,0]),
+            redes: normalizeTriple(storedActividades?.redes, [0,0,0]),
+            noTeorico: Boolean(storedActividades?.noTeorico),
+            noFormacion: Boolean(storedActividades?.noFormacion),
+            noRedes: Boolean(storedActividades?.noRedes),
+            otroLabel: typeof storedActividades?.otroLabel === "string" ? storedActividades.otroLabel : "",
           },
         }));
       }
@@ -356,15 +375,15 @@ export default function Home() {
       familiaNeg: "familiaNegVal",
     } as const;
     for (const i of indices) {
-      const c = state.contingencias.porEnfoque[i] || {};
+      const contingencia = state.contingencias.porEnfoque[i];
       for (const k of numericKeys) {
-        const v = c[k as keyof ContItem] as unknown as number | undefined;
-        if (typeof v !== "number" || v < 0 || v > 4) return false;
+        const frecuencia = contingencia?.[k];
+        if (typeof frecuencia !== "number" || frecuencia < 0 || frecuencia > 4) return false;
         // Si la frecuencia es > 0, exigir valencia 1..5
-        if (v > 0) {
-          const vk = valenceKeyMap[k];
-          const vv = c[vk] as unknown as number | undefined;
-          if (typeof vv !== "number" || vv < 1 || vv > 5) return false;
+        if (frecuencia > 0) {
+          const valenceKey = valenceKeyMap[k];
+          const valencia = contingencia?.[valenceKey];
+          if (typeof valencia !== "number" || valencia < 1 || valencia > 5) return false;
         }
       }
     }
@@ -501,7 +520,8 @@ function clampPercent(n: number) {
   return Math.round(n);
 }
 
-function toNumInRange(value: any, min: number, max: number): number | undefined {
+function toNumInRange(value: unknown, min: number, max: number): number | undefined {
+  if (typeof value !== "number" && typeof value !== "string") return undefined;
   const n = Number(value);
   if (!Number.isFinite(n)) return undefined;
   if (n < min || n > max) return undefined;
@@ -599,7 +619,7 @@ function Radio({ label, name, value, checked, onChange }: {
   name: string;
   value: string;
   checked?: boolean;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
     <label className="inline-flex items-center gap-2 text-sm">
@@ -961,7 +981,7 @@ function SectionAForm({
             <Input
               placeholder='Si respondió "Sí", indique cuál'
               value={data.adscripcionCual || ""}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 onChange("adscripcionCual", e.target.value)
               }
               className={`${showErrors && err.adscripcionCual ? "border-red-500 focus:ring-red-500" : ""}`}
