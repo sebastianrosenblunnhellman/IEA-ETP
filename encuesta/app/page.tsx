@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback, ChangeEvent } from "react";
 
 type Genero = "Femenino" | "Masculino" | "Otro" | "";
 
@@ -14,7 +14,7 @@ type SituacionAcademica =
 
 type SiNo = "Sí" | "No" | "";
 
-type Enfoque = string; // texto libre por ahora
+// (Se eliminó alias duplicado de Enfoque para evitar conflicto con la interface Enfoque más abajo)
 type ContactoParesOpcion = "psicoanalisis" | "tcc" | "otro" | "";
 
 type SectionA = {
@@ -27,11 +27,11 @@ type SectionA = {
   participacionDetalle?: string;
   influenciaDocente: SiNo;
   influenciaMateria?: string;
-  influenciaEnfoque?: Enfoque;
+  influenciaEnfoque?: string; // texto libre
   contactoParesOpcion?: ContactoParesOpcion;
   contactoParesOtro?: string;
   contactoPrevio: SiNo;
-  contactoPrevioEnfoque?: Enfoque;
+  contactoPrevioEnfoque?: string; // texto libre
   materiasElectivas: SiNo;
   materiasElectivasDetalle?: string;
   // nuevas preguntas
@@ -108,31 +108,27 @@ type NumericContKey =
   | "familiaPos"
   | "familiaNeg";
 
-type SurveyState = {
-  step: number; // 0=Intro, 1=Sección A, ...
-  consent?: boolean;
-  sectionA: SectionA;
-  teoricos: {
-    enfoques: {
-      nombre: string;
-      preferencia?: number; // -3..3
-      conocimiento?: number; // 1..5
-    }[];
-  };
-  contingencias: {
-    // Se guarda por índice de enfoque (0..4)
-  porEnfoque: Array<ContItem>;
-  };
+interface Enfoque {
+  nombre: string;
+  preferencia?: number; // -3..3
+  conocimiento?: number; // 1..5
+}
+interface SurveyState {
+  step: number;
+  consent: boolean;
+  sectionA: any;
+  teoricos: { enfoques: Enfoque[] };
+  contingencias: { porEnfoque: Record<string, any>[] };
   actividades: {
     teorico: [number, number, number];
     formacion: [number, number, number];
     redes: [number, number, number];
-    noTeorico?: boolean;
-    noFormacion?: boolean;
-    noRedes?: boolean;
-    otroLabel?: string;
+    noTeorico: boolean;
+    noFormacion: boolean;
+    noRedes: boolean;
+    otroLabel: string;
   };
-};
+}
 
 const emptyA: SectionA = {
   edad: "",
@@ -163,8 +159,18 @@ export default function Home() {
       ],
     },
   contingencias: { porEnfoque: Array.from({ length: 2 }, () => ({})) },
-  actividades: { teorico: [0, 0, 0], formacion: [0, 0, 0], redes: [0, 0, 0], noTeorico: false, noFormacion: false, noRedes: false, otroLabel: "" },
+  actividades: {
+    teorico: [0,0,0],
+    formacion: [0,0,0],
+    redes: [0,0,0],
+    noTeorico: false,
+    noFormacion: false,
+    noRedes: false,
+    otroLabel: ""
+  },
   });
+
+  // (Handlers de actividades previos removidos; ahora se usan números directamente)
 
   // Envío al backend
   const submitSurvey = async () => {
@@ -177,13 +183,20 @@ export default function Home() {
           sectionA: state.sectionA,
           teoricos: state.teoricos,
           contingencias: state.contingencias,
-          actividades: state.actividades,
+          // Convert string percentages to numbers just before send (optional)
+          actividades: {
+            ...state.actividades,
+            teorico: state.actividades.teorico.map(v => Number(v)),
+            formacion: state.actividades.formacion.map(v => Number(v)),
+            redes: state.actividades.redes.map(v => Number(v)),
+          },
         }),
       });
       if (!res.ok) throw new Error('Error al guardar');
       const json = await res.json();
       if (json?.ok) setState((s) => ({ ...s, step: 5 }));
-    } catch {
+    } catch (e) {
+      console.error('submitSurvey error', e);
       alert('Hubo un problema al enviar la encuesta. Intente nuevamente.');
     }
   };
@@ -202,13 +215,13 @@ export default function Home() {
             enfoques: [
               {
                 nombre: "Psicoanálisis (Freudiano, Lacaniano y otros)",
-                preferencia: parsed.teoricos?.enfoques?.[0]?.preferencia,
-                conocimiento: parsed.teoricos?.enfoques?.[0]?.conocimiento,
+                preferencia: toNumInRange((parsed.teoricos as any)?.enfoques?.[0]?.preferencia, -3, 3),
+                conocimiento: toNumInRange((parsed.teoricos as any)?.enfoques?.[0]?.conocimiento, 1, 5),
               },
               {
         nombre: "Terapia Cognitivo Conductual (conductual, cognitivo o contextual)",
-                preferencia: parsed.teoricos?.enfoques?.[1]?.preferencia,
-                conocimiento: parsed.teoricos?.enfoques?.[1]?.conocimiento,
+                preferencia: toNumInRange((parsed.teoricos as any)?.enfoques?.[1]?.preferencia, -3, 3),
+                conocimiento: toNumInRange((parsed.teoricos as any)?.enfoques?.[1]?.conocimiento, 1, 5),
               },
             ],
           },
@@ -219,9 +232,13 @@ export default function Home() {
                 : prev.contingencias.porEnfoque,
           },
           actividades: {
-            teorico: normalizeTriple(parsed.actividades?.teorico, [0, 0, 0]),
-            formacion: normalizeTriple(parsed.actividades?.formacion, [0, 0, 0]),
-            redes: normalizeTriple(parsed.actividades?.redes, [0, 0, 0]),
+            teorico: normalizeTriple(parsed.actividades?.teorico, [0,0,0]),
+            formacion: normalizeTriple(parsed.actividades?.formacion, [0,0,0]),
+            redes: normalizeTriple(parsed.actividades?.redes, [0,0,0]),
+            noTeorico: Boolean(parsed.actividades?.noTeorico),
+            noFormacion: Boolean(parsed.actividades?.noFormacion),
+            noRedes: Boolean(parsed.actividades?.noRedes),
+            otroLabel: (parsed.actividades?.otroLabel as any) || "",
           },
         }));
       }
@@ -290,7 +307,7 @@ export default function Home() {
   const canContinueContingencias = useMemo(() => {
     const indices = state.teoricos.enfoques
       .map((e, i) => ({ i, e }))
-      .filter(({ e }) => (e.nombre || "").trim() && (e.conocimiento || 0) >= 2)
+      .filter(({ e }) => (e.nombre || "").trim() && (Number(e.conocimiento) || 0) >= 2)
       .map(({ i }) => i);
     // Si no hay enfoques incluidos, no se exige esta sección
     if (indices.length === 0) return true;
@@ -484,6 +501,13 @@ function clampPercent(n: number) {
   return Math.round(n);
 }
 
+function toNumInRange(value: any, min: number, max: number): number | undefined {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  if (n < min || n > max) return undefined;
+  return n;
+}
+
 function normalizeTriple(arr: unknown, fallback: [number, number, number]): [number, number, number] {
   if (Array.isArray(arr) && arr.length === 3) {
     const a = Number(arr[0]);
@@ -501,7 +525,7 @@ function Intro({ onNext, consent, onConsentChange }: { onNext: () => void; conse
       <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900">HISTORIA DE APRENDIZAJE COMO PREDICTOR DE LAS ACTITUDES HACIA LOS ENFOQUES TEÓRICOS EN PSICOLOGÍA</h1>
       <p className="text-sm text-neutral-600">
         Sebastian Rosenblunn Helman, Universidad de Buenos Aires<br />
-        Thomas Balaceda, Universidad de Buenos Aires
+        Thomas Balmaceda, Universidad de Buenos Aires
       </p>
       </header>
 
@@ -605,12 +629,40 @@ function SectionAForm({
   onNext: () => void;
   canContinue: boolean;
 }) {
+  const [showErrors, setShowErrors] = useState(false);
+
+  const err = {
+    edad: !data.edad,
+    genero: !data.genero,
+    generoOtro: data.genero === "Otro" && !data.generoOtro,
+    anioInicio: !data.anioInicio,
+    situacion: !data.situacion,
+    participacionDocencia: !data.participacionDocencia,
+    participacionDetalle: data.participacionDocencia === "Sí" && !data.participacionDetalle,
+    influenciaDocente: !data.influenciaDocente,
+    influenciaCampos:
+      data.influenciaDocente === "Sí" &&
+      (!data.influenciaMateria || !data.influenciaEnfoque),
+    contactoPrevio: !data.contactoPrevio,
+    contactoPrevioEnfoque: data.contactoPrevio === "Sí" && !data.contactoPrevioEnfoque,
+    materiasElectivas: !data.materiasElectivas,
+    materiasElectivasDetalle:
+      data.materiasElectivas === "Sí" && !data.materiasElectivasDetalle,
+    adscripcionCual:
+      data.adscripcionTeorica === "Sí" &&
+      !(data.adscripcionCual && data.adscripcionCual.trim()),
+  };
+
   return (
     <form
       className="space-y-6"
       onSubmit={(e) => {
         e.preventDefault();
-        if (canContinue) onNext();
+        if (!canContinue) {
+          setShowErrors(true);
+          return;
+        }
+        onNext();
       }}
     >
       <header className="mb-2">
@@ -630,16 +682,21 @@ function SectionAForm({
             value={data.edad}
             onChange={(e) => onChange("edad", e.target.value)}
             placeholder="______"
-            className="max-w-28"
+            className={`max-w-28 ${showErrors && err.edad ? "border-red-500 focus:ring-red-500" : ""}`}
           />
       <span className="text-sm text-neutral-600">años</span>
         </div>
+        {showErrors && err.edad && <p className="text-xs text-red-600 mt-1">Requerido</p>}
       </div>
 
       {/* 2. Género */}
       <div>
         <FieldLabel required>2. Género / Identidad de género</FieldLabel>
-        <div className="flex flex-wrap gap-4">
+        <div
+          className={`flex flex-wrap gap-4 ${
+            showErrors && err.genero ? "border border-red-500 rounded-md p-2" : ""
+          }`}
+        >
           {(["Femenino", "Masculino", "Otro"] as Genero[]).map(
             (g) => (
               <Radio
@@ -656,13 +713,16 @@ function SectionAForm({
             )
           )}
         </div>
+        {showErrors && err.genero && <p className="text-xs text-red-600 mt-1">Seleccione una opción</p>}
         {data.genero === "Otro" && (
           <div className="mt-2">
             <Input
               placeholder="Especifique"
               value={data.generoOtro || ""}
               onChange={(e) => onChange("generoOtro", e.target.value)}
+              className={`${showErrors && err.generoOtro ? "border-red-500 focus:ring-red-500" : ""}`}
             />
+            {showErrors && err.generoOtro && <p className="text-xs text-red-600 mt-1">Complete este campo</p>}
           </div>
         )}
       </div>
@@ -677,14 +737,15 @@ function SectionAForm({
           value={data.anioInicio}
           onChange={(e) => onChange("anioInicio", e.target.value)}
           placeholder="YYYY"
-          className="max-w-32"
+          className={`max-w-32 ${showErrors && err.anioInicio ? "border-red-500 focus:ring-red-500" : ""}`}
         />
+        {showErrors && err.anioInicio && <p className="text-xs text-red-600 mt-1">Requerido</p>}
       </div>
 
       {/* 4. Situación académica */}
       <div>
         <FieldLabel required>4. Situación académica actual</FieldLabel>
-  <div className="grid gap-2">
+        <div className={`grid gap-2 ${showErrors && err.situacion ? "border border-red-500 rounded-md p-2" : ""}`}>
           {(
             [
               "CBC",
@@ -704,6 +765,7 @@ function SectionAForm({
             />
           ))}
         </div>
+        {showErrors && err.situacion && <p className="text-xs text-red-600 mt-1">Seleccione una opción</p>}
       </div>
 
       {/* 5. Participación en docencia/investigación */}
@@ -731,7 +793,9 @@ function SectionAForm({
               placeholder="Materia o nombre del proyecto"
               value={data.participacionDetalle || ""}
               onChange={(e) => onChange("participacionDetalle", e.target.value)}
+              className={`${showErrors && err.participacionDetalle ? "border-red-500 focus:ring-red-500" : ""}`}
             />
+            {showErrors && err.participacionDetalle && <p className="text-xs text-red-600 mt-1">Complete este campo</p>}
           </div>
         )}
       </div>
@@ -760,12 +824,15 @@ function SectionAForm({
               placeholder="Materia / Área"
               value={data.influenciaMateria || ""}
               onChange={(e) => onChange("influenciaMateria", e.target.value)}
+              className={`${showErrors && err.influenciaCampos ? "border-red-500 focus:ring-red-500" : ""}`}
             />
             <Input
               placeholder="Enfoque teórico percibido"
               value={data.influenciaEnfoque || ""}
               onChange={(e) => onChange("influenciaEnfoque", e.target.value)}
+              className={`${showErrors && err.influenciaCampos ? "border-red-500 focus:ring-red-500" : ""}`}
             />
+            {showErrors && err.influenciaCampos && <p className="text-xs text-red-600">Complete ambos campos</p>}
           </div>
         )}
       </div>
@@ -835,7 +902,9 @@ function SectionAForm({
               placeholder="Enfoque teórico principal del contacto previo"
               value={data.contactoPrevioEnfoque || ""}
               onChange={(e) => onChange("contactoPrevioEnfoque", e.target.value)}
+              className={`${showErrors && err.contactoPrevioEnfoque ? "border-red-500 focus:ring-red-500" : ""}`}
             />
+            {showErrors && err.contactoPrevioEnfoque && <p className="text-xs text-red-600 mt-1">Complete este campo</p>}
           </div>
         )}
       </div>
@@ -862,7 +931,9 @@ function SectionAForm({
               placeholder="Indique cuáles"
               value={data.materiasElectivasDetalle || ""}
               onChange={(e) => onChange("materiasElectivasDetalle", e.target.value)}
+              className={`${showErrors && err.materiasElectivasDetalle ? "border-red-500 focus:ring-red-500" : ""}`}
             />
+            {showErrors && err.materiasElectivasDetalle && <p className="text-xs text-red-600 mt-1">Complete este campo</p>}
           </div>
         )}
       </div>
@@ -893,7 +964,9 @@ function SectionAForm({
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 onChange("adscripcionCual", e.target.value)
               }
+              className={`${showErrors && err.adscripcionCual ? "border-red-500 focus:ring-red-500" : ""}`}
             />
+            {showErrors && err.adscripcionCual && <p className="text-xs text-red-600 mt-1">Indique cuál</p>}
             {data.adscripcionCual && data.adscripcionCual.trim() && (
               <div className="mt-3">
                 <div className="text-sm mb-1">¿Qué tan probable es que cambie de posición?</div>
@@ -963,6 +1036,7 @@ function SectionTeoricos({
   onNext: () => void;
   canContinue: boolean;
 }) {
+  const [showErrors, setShowErrors] = useState(false);
   const filled = enfoques.map((e, i) => ({ e, i, nombre: e.nombre.trim() }));
   const prefScale = [-3, -2, -1, 0, 1, 2, 3];
   const knowledgeScale = [1, 2, 3, 4, 5];
@@ -973,7 +1047,11 @@ function SectionTeoricos({
       className="space-y-8"
       onSubmit={(e) => {
         e.preventDefault();
-        if (canContinue) onNext();
+        if (!canContinue) {
+          setShowErrors(true);
+          return;
+        }
+        onNext();
       }}
     >
       <header className="space-y-1">
@@ -992,32 +1070,43 @@ function SectionTeoricos({
         </ul>
       </section>
 
-      {/* Preferencia de uso (preguntas separadas) */}
+      {/* Preferencia de uso (bloque corregido) */}
       <section className="space-y-3">
         <h3 className="font-medium">Preferencia de uso</h3>
-    <div className="space-y-4">
-      {filled.map(({ i }) => (
-            <div key={`pref-block-${i}`} className="border rounded-lg p-3 bg-white">
-              <div className="text-sm mb-2">
-        Preferiría utilizar <strong>{short(i)}</strong> en comparación con otros enfoques teóricos.
+        <div className="space-y-4">
+          {filled.map(({ i }) => {
+            const prefMissing = enfoques[i]?.preferencia === undefined;
+            return (
+              <div
+                key={`pref-block-${i}`}
+                className={`border rounded-lg p-3 bg-white ${
+                  showErrors && prefMissing ? "border-red-500" : ""
+                }`}
+              >
+                <div className="text-sm mb-2">
+                  Preferiría utilizar <strong>{short(i)}</strong> en comparación con otros enfoques teóricos.
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {prefScale.map((n) => (
+                    <label key={n} className="inline-flex items-center gap-1 text-sm">
+                      <input
+                        type="radio"
+                        name={`pref-${i}`}
+                        value={n}
+                        checked={enfoques[i]?.preferencia === n}
+                        onChange={() => onChangePreferencia(i, n)}
+                        className="h-4 w-4"
+                      />
+                      {n > 0 ? `+${n}` : n}
+                    </label>
+                  ))}
+                </div>
+                {showErrors && prefMissing && (
+                  <p className="text-xs text-red-600 mt-2">Seleccione una opción</p>
+                )}
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                {prefScale.map((n) => (
-                  <label key={n} className="inline-flex items-center gap-1 text-sm">
-                    <input
-                      type="radio"
-                      name={`pref-${i}`}
-                      value={n}
-          checked={enfoques[i]?.preferencia === n}
-                      onChange={() => onChangePreferencia(i, n)}
-                      className="h-4 w-4"
-                    />
-                    {n > 0 ? `+${n}` : n}
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -1060,8 +1149,15 @@ function SectionTeoricos({
                 </tr>
               </thead>
               <tbody>
-                {filled.map(({ i }) => (
-                  <tr key={`row-${i}`} className="border-t">
+                {filled.map(({ i }) => {
+                  const knowMissing = enfoques[i]?.conocimiento === undefined;
+                  return (
+                    <tr
+                      key={`row-${i}`}
+                      className={`border-t ${
+                        showErrors && knowMissing ? "bg-red-50" : ""
+                      }`}
+                    >
           <td className="p-2 pr-4 align-middle"><strong>{short(i)}</strong></td>
                     {knowledgeScale.map((n) => (
                       <td key={n} className="p-2 text-center">
@@ -1077,7 +1173,8 @@ function SectionTeoricos({
                       </td>
                     ))}
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>
@@ -1115,6 +1212,7 @@ function SectionContingencias({
   onNext: () => void;
   canContinue: boolean;
 }) {
+  const [showErrors, setShowErrors] = useState(false);
   const includeIdx = enfoques
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => (e.nombre || "").trim() && (e.conocimiento || 0) >= 2)
@@ -1133,7 +1231,7 @@ function SectionContingencias({
     label?: string;
   }) => (
     <select
-      className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+      className="w-full max-w-full rounded-md border border-gray-300 px-2 py-1 text-sm bg-white"
       value={typeof value === "number" ? Math.max(0, Math.min(4, value)) : ""}
       onChange={(e) => onChange(Number(e.target.value))}
     >
@@ -1185,7 +1283,11 @@ function SectionContingencias({
       className="space-y-6"
       onSubmit={(e) => {
         e.preventDefault();
-        if (canContinue) onNext();
+        if (!canContinue) {
+          setShowErrors(true);
+          return;
+        }
+        onNext();
       }}
     >
       <header className="space-y-3">
@@ -1290,9 +1392,9 @@ function SectionContingencias({
               });
 
               return (
-                <section key={ctx.id} className="border rounded-lg p-4 space-y-3 bg-white">
+                <section key={ctx.id} className="contingencias-context border rounded-lg p-4 space-y-4 bg-white">
                   <h3 className="font-medium">{ctx.title}</h3>
-                  <div className="grid gap-3">
+                  <div className="grid gap-4">
                     {mixed.map((it) => {
                       const c: Partial<ContItem> = data[it.enfoqueIdx] ?? ({} as Partial<ContItem>);
                       const short = it.enfoqueIdx === 0 ? "PSA" : "TCC";
@@ -1321,9 +1423,19 @@ function SectionContingencias({
                       } as const;
                       const vKey = valenceKeyMap[it.key as NumericContKey];
                       const freqValue = (c[it.key as NumericContKey] as number | undefined) ?? undefined;
+                      const missingFreq = freqValue === undefined;
+                      const missingVal =
+                        vKey && freqValue && freqValue > 0 && c[vKey] === undefined;
                       return (
-                        <div key={`${ctx.id}-${it.enfoqueIdx}-${String(it.key)}`} className="flex flex-col gap-2">
-                          <div className="text-sm">
+                        <div
+                          key={`${ctx.id}-${it.enfoqueIdx}-${String(it.key)}`}
+                          className={`contingencia-item flex flex-col gap-2 p-3 rounded-md bg-neutral-50 ${
+                            showErrors && (missingFreq || missingVal)
+                              ? "border border-red-500"
+                              : "border border-transparent"
+                          }`}
+                        >
+                          <div className="text-sm leading-relaxed">
                             {parts.map((p, idx) => (
                               <span key={idx}>
                                 {p}
@@ -1342,8 +1454,13 @@ function SectionContingencias({
                               }}
                               label="Seleccione"
                             />
+                            {showErrors && missingFreq && (
+                              <p className="text-xs text-red-600">
+                                Seleccione una frecuencia
+                              </p>
+                            )}
                             {vKey && freqValue && freqValue > 0 && (
-                              <div className="text-xs text-gray-700">
+                              <div className="text-xs text-gray-700 valence-wrapper">
                                 ¿Qué sentimientos o pensamientos le produjo esta situación?
                                 <div className="mt-1">
                                   <ValenciaRadios5
@@ -1352,6 +1469,11 @@ function SectionContingencias({
                                     onChange={(v) => onChange(it.enfoqueIdx, { [vKey]: v } as Partial<ContItem>)}
                                   />
                                 </div>
+                                {showErrors && missingVal && (
+                                  <p className="text-xs text-red-600 mt-1">
+                                    Seleccione una opción
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1397,6 +1519,7 @@ function SectionActividades({
   onBack: () => void;
   onSubmit: () => void;
 }) {
+  const [showErrors, setShowErrors] = useState(false);
   const names: [string, string, string] = ["PSA", "TCC", data.otroLabel?.trim() ? data.otroLabel.trim().toUpperCase() : "OTRO"];
 
   const sum = (triple: [number, number, number]) => (triple?.[0] || 0) + (triple?.[1] || 0) + (triple?.[2] || 0);
@@ -1404,70 +1527,137 @@ function SectionActividades({
 
   const canSubmit = okRow(data.teorico, data.noTeorico) && okRow(data.formacion, data.noFormacion) && okRow(data.redes, data.noRedes);
 
-  const Row = ({
-    title,
-    hint,
-    cat,
-    triple,
-  }: {
-    title: string;
-    hint: string;
-    cat: "teorico" | "formacion" | "redes";
-    triple: [number, number, number];
-  }) => (
-    <section className="border rounded-lg p-4 bg-white space-y-3">
-      <h3 className="font-medium">{title}</h3>
-      <p className="text-sm text-neutral-600">{hint}</p>
-      <div className="flex items-center gap-4 text-sm">
-        <label className="inline-flex items-center gap-2">
-          <input
-            type="checkbox"
-            className="h-4 w-4"
-            checked={cat === 'teorico' ? !!data.noTeorico : cat === 'formacion' ? !!data.noFormacion : !!data.noRedes}
-            onChange={(e) => onToggleNone(cat, e.target.checked)}
-          />
-          {cat === 'formacion' ? 'No participo' : 'No consumo'}
-        </label>
-      </div>
-      <div className="hidden sm:grid sm:grid-cols-4 text-xs text-neutral-500">
-        <div>Enfoque</div>
-        <div className="sm:col-span-3 sm:text-right">Porcentaje de tiempo dedicado</div>
-      </div>
-      <div className="grid gap-3">
-        {names.map((n, i) => (
-          <div key={n} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
-            <div className="text-sm font-medium"><strong>{n}</strong></div>
-            <div className="sm:col-span-3 flex items-center gap-2">
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={triple?.[i] ?? 0}
-                onChange={(e) => onChange(cat, i as 0 | 1 | 2, Number(e.target.value))}
-                disabled={cat === 'teorico' ? !!data.noTeorico : cat === 'formacion' ? !!data.noFormacion : !!data.noRedes}
-                className="max-w-28"
-                placeholder="0"
-              />
-              <span className="text-sm">%</span>
+  const renderRow = (
+    title: string,
+    hint: string,
+    cat: "teorico" | "formacion" | "redes",
+    triple: [number, number, number]
+  ) => {
+    const none =
+      cat === "teorico"
+        ? data.noTeorico
+        : cat === "formacion"
+        ? data.noFormacion
+        : data.noRedes;
+    const invalid = !okRow(triple, none);
+    return (
+      <section
+        className={`border rounded-lg p-4 bg-white space-y-3 ${
+          showErrors && invalid ? "border-red-500" : ""
+        }`}
+      >
+        <h3 className="font-medium">{title}</h3>
+        <p className="text-sm text-neutral-600">{hint}</p>
+        <div className="flex items-center gap-4 text-sm">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={
+                cat === "teorico"
+                  ? !!data.noTeorico
+                  : cat === "formacion"
+                  ? !!data.noFormacion
+                  : !!data.noRedes
+              }
+              onChange={(e) => onToggleNone(cat, e.target.checked)}
+            />
+            {cat === "formacion" ? "No participo" : "No consumo"}
+          </label>
+        </div>
+        <div className="hidden sm:grid sm:grid-cols-4 text-xs text-neutral-500">
+          <div>Enfoque</div>
+          <div className="sm:col-span-3 sm:text-right">Porcentaje de tiempo dedicado</div>
+        </div>
+        <div className="grid gap-3">
+          {names.map((n, i) => (
+            <div key={n} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+              <div className="text-sm font-medium">
+                <strong>{n}</strong>
+              </div>
+              <div className="sm:col-span-3 flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={triple?.[i] ?? 0}
+                  onChange={(e) =>
+                    onChange(cat, i as 0 | 1 | 2, Number(e.target.value))
+                  }
+                  onFocus={(e) => {
+                    const input = e.target;
+                    if (input.readOnly || input.disabled) return;
+                    setTimeout(() => {
+                      try {
+                        input.select();
+                      } catch {
+                        /* ignore */
+                      }
+                    }, 0);
+                  }}
+                  disabled={
+                    cat === "teorico"
+                      ? !!data.noTeorico
+                      : cat === "formacion"
+                      ? !!data.noFormacion
+                      : !!data.noRedes
+                  }
+                  className="max-w-28"
+                  placeholder="0"
+                />
+                <span className="text-sm">%</span>
+              </div>
+            </div>
+          ))}
+          <div className="flex items-center justify-between pt-1 border-t mt-2">
+            <div className="text-sm text-neutral-700">Total</div>
+            <div
+              className={`text-sm ${
+                okRow(
+                  triple,
+                  cat === "teorico"
+                    ? data.noTeorico
+                    : cat === "formacion"
+                    ? data.noFormacion
+                    : data.noRedes
+                )
+                  ? "text-neutral-900"
+                  : "text-red-600"
+              }`}
+            >
+              {sum(triple)} %{" "}
+              {okRow(
+                triple,
+                cat === "teorico"
+                  ? data.noTeorico
+                  : cat === "formacion"
+                  ? data.noFormacion
+                  : data.noRedes
+              )
+                ? ""
+                : "(debe sumar 100%)"}
             </div>
           </div>
-        ))}
-        <div className="flex items-center justify-between pt-1 border-t mt-2">
-          <div className="text-sm text-neutral-700">Total</div>
-          <div className={`text-sm ${okRow(triple, cat === 'teorico' ? data.noTeorico : cat === 'formacion' ? data.noFormacion : data.noRedes) ? "text-neutral-900" : "text-red-600"}`}>
-            {sum(triple)} % {okRow(triple, cat === 'teorico' ? data.noTeorico : cat === 'formacion' ? data.noFormacion : data.noRedes) ? "" : "(debe sumar 100%)"}
-          </div>
+          {showErrors && invalid && (
+            <p className="text-xs text-red-600">
+              Debe sumar 100% (o marcar No consumo/No participo)
+            </p>
+          )}
         </div>
-      </div>
-    </section>
-  );
+      </section>
+    );
+  };
 
   return (
     <form
       className="space-y-6"
       onSubmit={(e) => {
         e.preventDefault();
-        if (canSubmit) onSubmit();
+        if (!canSubmit) {
+          setShowErrors(true);
+          return;
+        }
+        onSubmit();
       }}
     >
       <header className="space-y-2">
@@ -1477,26 +1667,26 @@ function SectionActividades({
         </p>
       </header>
 
-      <Row
-        title="Consumo de Material Teórico"
-        hint="(Lectura de libros/artículos, ver videos, escuchar podcasts, etc.)"
-        cat="teorico"
-        triple={data.teorico}
-      />
+      {renderRow(
+        "Consumo de Material Teórico",
+        "(Lectura de libros/artículos, ver videos, escuchar podcasts, etc.)",
+        "teorico",
+        data.teorico
+      )}
 
-      <Row
-        title="Participación en Actividades de Formación"
-        hint="(Asistencia a charlas, seminarios, talleres, grupos de estudio, debates etc.)"
-        cat="formacion"
-        triple={data.formacion}
-      />
+      {renderRow(
+        "Participación en Actividades de Formación",
+        "(Asistencia a charlas, seminarios, talleres, grupos de estudio, debates etc.)",
+        "formacion",
+        data.formacion
+      )}
 
-      <Row
-        title="Consumo Cultural en Redes Sociales"
-        hint="(Seguimiento de cuentas en redes sociales (p. ej., Instagram, YouTube, TikTok, X, Facebook) o participación en grupos (p. ej., WhatsApp, Telegram) relacionados con los enfoques)"
-        cat="redes"
-        triple={data.redes}
-      />
+      {renderRow(
+        "Consumo Cultural en Redes Sociales",
+        "(Seguimiento de cuentas en redes sociales (p. ej., Instagram, YouTube, TikTok, X, Facebook) o participación en grupos (p. ej., WhatsApp, Telegram) relacionados con los enfoques)",
+        "redes",
+        data.redes
+      )}
 
       {(((data.teorico?.[2] || 0) > 0) || ((data.formacion?.[2] || 0) > 0) || ((data.redes?.[2] || 0) > 0)) && (
         <div className="mt-1 flex items-center gap-2">
@@ -1522,6 +1712,44 @@ function SectionActividades({
           Enviar Encuesta
         </button>
       </div>
+
+      {/* Global styles for responsiveness (can be moved to globals.css) */}
+      <style jsx global>{`
+        .aprendizaje-grid {
+          display: grid;
+          gap: 0.75rem;
+          grid-template-columns: repeat(auto-fit,minmax(140px,1fr));
+        }
+        .responsive-table {
+          width: 100%;
+          overflow-x: auto;
+        }
+        /* Corrige overflow y forzado de ancho en la sección Aprendizaje (Contingencias) */
+        .contingencias-context {
+          overflow: hidden;
+        }
+        .contingencias-context .contingencia-item {
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+        .contingencias-context select {
+          max-width: 100%;
+        }
+        .contingencias-context .valence-wrapper {
+          display: block;
+        }
+        @media (max-width: 640px) {
+          .contingencias-context {
+            padding: 0.9rem;
+          }
+          .contingencias-context .contingencia-item {
+            padding: 0.65rem 0.75rem;
+          }
+          .contingencias-context select {
+            font-size: 0.78rem;
+          }
+        }
+      `}</style>
     </form>
   );
 }
